@@ -7,14 +7,29 @@ namespace Application {
 	
 	ref class Gfx sealed {
 	
-	public:
-		Gfx();
+	protected:
+
+		property bool UseGPU{
+			bool get() {
+				return g_UseGPU;
+			}
+		}
+
 	private:
 
-		ComPtr<ID3D12Debug> m_DebugController;
+		bool g_UseGPU;
+		DXGI_MODE_DESC* g_PrimaryOutput;
+
+		ComPtr<ID3D12Debug> g_DebugController;
+		ComPtr<IDXGIFactory4> g_DxgiFactory;
+		ComPtr<ID3D12Device> g_Device;
 
 		void InitializeDebugging();
 		void InitializeDirect3d();
+
+		// Utility
+		IDXGIAdapter* getGPU();
+		void getPrimaryOutputProperties();
 	};
 
 }
