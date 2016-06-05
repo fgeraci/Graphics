@@ -36,10 +36,17 @@
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="App.cpp" />
+    <ClCompile Include="Gfx.cpp" />
+    <ClCompile Include="MyApp.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="Common\d3dx12.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="Gfx.h" />
+    <ClInclude Include="MyApp.h" />
+    <ClInclude Include="DirectXHelper.h">
       <Filter>Common</Filter>
     </ClInclude>
   </ItemGroup>
