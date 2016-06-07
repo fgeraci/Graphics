@@ -19,3 +19,4 @@
 
 // Our includes
 #include "DirectXHelper.h"
+#include "DirectXColors.h"

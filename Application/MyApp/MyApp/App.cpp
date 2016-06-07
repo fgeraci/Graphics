@@ -1,5 +1,6 @@
 // Mandatory - all Windows dependencies - pre-compiled header
 #include "pch.h"
+#include "MyApp.h"
 
 // Add required namespaces to simplify code - manually
 using namespace Windows::ApplicationModel;
@@ -11,17 +12,20 @@ using namespace Windows::System;
 using namespace Windows::Foundation;
 using namespace Windows::Graphics::Display;
 using namespace Platform;
+using namespace Application;
 
 ref class App sealed : public IFrameworkView {
 private:
 
-	CoreWindow^ m_CoreWindow;
+	CoreWindow^ g_CoreWindow;
+	Gfx^ g_Graphics;
+	MyApp^ g_MainApplication;
 
 protected:
 	
 	property CoreWindow^ MainWindow {
 		CoreWindow^ get() {
-			return this->m_CoreWindow;
+			return this->g_CoreWindow;
 		}
 	}
 
@@ -53,7 +57,7 @@ public:
 	{
 
 		/* Set up Properties */
-		this->m_CoreWindow = window;
+		this->g_CoreWindow = window;
 
 		/* Windows event handlers */
 		window->Closed += ref new TypedEventHandler
@@ -65,8 +69,15 @@ public:
 		/* IO events handlers */
 
 	}
-
-	virtual void Load(Platform::String ^entryPoint) { }
+	
+	// Instantiate the application here
+	virtual void Load(Platform::String ^entryPoint) { 
+		try {
+			g_MainApplication = ref new MyApp();
+		} catch (Exception^ e) {
+			MessageDialog(e->Message);
+		}
+	}
 
 	virtual void Run();
 
@@ -80,13 +91,15 @@ public:
 	}
 
 	void OnSuspending(Object^ pSender, SuspendingEventArgs^ args) {
-		
+		g_MainApplication->Terminate();
 	}
+
 	void OnResuming(Object^ pSender, Object^ args) {
 		
 	}
+
 	void OnExiting(Object^ pSender, Object^ args) {
-		
+	
 	}
 
 	void OnWindowClosed(CoreWindow^ pWnd, CoreWindowEventArgs^ args) {
@@ -94,10 +107,8 @@ public:
 	}
 
 	void OnWindowResized(CoreWindow^ pWnd, WindowSizeChangedEventArgs^ args) {
-		UINT width = args->Size.Width;
-		UINT height = args->Size.Height;
+		g_MainApplication->Resize(args->Size.Width, args->Size.Height);
 	}
-
 };
 
 ref class AppCreator sealed : IFrameworkViewSource {
@@ -114,6 +125,7 @@ int main(Array<String^>^ args) {
 }
 
 void App::Run() {
+	OutputDebugString(L"App::Run\n");
 	while (!(this->IsWindowClosed)) {
 
 		/* Different types of Application's events processing
@@ -122,6 +134,9 @@ void App::Run() {
 		We want to be in control of the processing loop, so instead, we will use ProcessAllIfPresent
 		*/
 		this->MainWindow->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
+
+		g_MainApplication->Update();
+		
 
 	}
 }

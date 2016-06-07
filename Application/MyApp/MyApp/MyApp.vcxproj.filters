@@ -49,11 +49,19 @@
     <ClInclude Include="DirectXHelper.h">
       <Filter>Common</Filter>
     </ClInclude>
+    <ClInclude Include="DirectXColors.h">
+      <Filter>Common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
   </ItemGroup>
   <ItemGroup>
     <None Include="MyApp_TemporaryKey.pfx" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Assets\SplashScreen_RU.png">
+      <Filter>Assets</Filter>
+    </Image>
   </ItemGroup>
 </Project>
