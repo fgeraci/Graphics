@@ -37,6 +37,7 @@ void Gfx::InitializeDirect3D() {
 			IID_PPV_ARGS(&g_Device)
 		));
 	} catch (HRESULT e) {
+		
 		// fallback to WARP - Windows Advanced Rasterizer Platform = Software "GPU"
 		ComPtr<IDXGIAdapter> warpAdapter;
 		// obtain warp

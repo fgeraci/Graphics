@@ -12,11 +12,14 @@
 #include <vector>
 #include <agile.h>
 #include <concrt.h>
+#include <string>
 
 #if defined(_DEBUG)
 #include <dxgidebug.h>
 #endif
 
 // Our includes
-#include "DirectXHelper.h"
-#include "DirectXColors.h"
+#include <Windows.h>		// Performance counter
+#include "DirectXHelper.h"	// ThrowIfFailed
+#include "DirectXColors.h"	// DirectX::Colors
+#include "Ticker.h"			// FPS controller

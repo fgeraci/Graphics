@@ -198,6 +198,7 @@
     <ClInclude Include="Gfx.h" />
     <ClInclude Include="MyApp.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Ticker.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp" />

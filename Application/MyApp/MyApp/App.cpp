@@ -18,7 +18,7 @@ ref class App sealed : public IFrameworkView {
 private:
 
 	CoreWindow^ g_CoreWindow;
-	Gfx^ g_Graphics;
+	Ticker^ g_Ticker;
 	MyApp^ g_MainApplication;
 
 protected:
@@ -74,6 +74,7 @@ public:
 	virtual void Load(Platform::String ^entryPoint) { 
 		try {
 			g_MainApplication = ref new MyApp();
+			g_Ticker = ref new Ticker(g_MainApplication->GlobalFPS);
 		} catch (Exception^ e) {
 			MessageDialog(e->Message);
 		}
@@ -134,8 +135,10 @@ void App::Run() {
 		We want to be in control of the processing loop, so instead, we will use ProcessAllIfPresent
 		*/
 		this->MainWindow->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
-
-		g_MainApplication->Update();
+		
+		if(g_Ticker->Tick()){
+			g_MainApplication->Update();
+		}
 		
 
 	}
