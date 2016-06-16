@@ -6,7 +6,7 @@ using namespace Application;
 using namespace DX;
 
 Gfx::Gfx() {
-	OutputDebugString(L"Initializing Gfx\n");
+	LOGMESSAGE(L"Initializing Gfx\n");
 	InitializeDebugging();
 	InitializeDirect3D();
 }
@@ -16,20 +16,20 @@ void Gfx::InitializeDebugging() {
 	DX::ThrowIfFailed(D3D12GetDebugInterface(IID_PPV_ARGS(&g_DebugController)));
 	g_DebugController->EnableDebugLayer();
 	g_DebugEnabled = true;
-	OutputDebugString(L"Debugging Initialized\n");
+	LOGMESSAGE(L"Debugging Initialized\n");
 #endif
 }
 
 void Gfx::InitializeDirect3D() {
 	
-	OutputDebugString(L"1. Create Factory\n");
+	LOGMESSAGE(L"1. Create Factory\n");
 	// we could also use GetAddressOf to obtain the address of the interface pointer
 	ThrowIfFailed(CreateDXGIFactory2(
 		0, 
 		IID_PPV_ARGS(&g_DxgiFactory)
 	));
 
-	OutputDebugString(L"2. Create Device\n");
+	LOGMESSAGE(L"2. Create Device\n");
 	try {
 		ThrowIfFailed(D3D12CreateDevice(
 			(g_UseGPU ? GetGPU() : nullptr),
@@ -50,10 +50,10 @@ void Gfx::InitializeDirect3D() {
 		));
 	}
 
-	OutputDebugString(L"3. Create Fence\n");
+	LOGMESSAGE(L"3. Create Fence\n");
 	ThrowIfFailed(g_Device->CreateFence(g_CurrentFence,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&g_Fence)));
 
-	OutputDebugString(L"4. Obtain Descriptors sizes\n");
+	LOGMESSAGE(L"4. Obtain Descriptors sizes\n");
 		// Render Targets
 	g_RtvDescriptorSize = g_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		// Depth/Stencil
@@ -61,11 +61,11 @@ void Gfx::InitializeDirect3D() {
 		// Buffers, Shaders,Unordered Resources
 	g_SrvDescriptorSize = g_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-	OutputDebugString(L"5. Check MSAA quality support levels and output information\n");
+	LOGMESSAGE(L"5. Check MSAA quality support levels and output information\n");
 	CheckAntialisngSupport();
 	GetClientOutputProperties();
 
-	OutputDebugString(L"6. Create Command Queue, Allocator and List\n");
+	LOGMESSAGE(L"6. Create Command Queue, Allocator and List\n");
 	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
 	queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
@@ -77,14 +77,14 @@ void Gfx::InitializeDirect3D() {
 	// start out closed
 	ThrowIfFailed(g_CommandList->Close());
 
-	OutputDebugString(L"7. Initialize Swap Chain\n");
+	LOGMESSAGE(L"7. Initialize Swap Chain\n");
 		// first we describe the swap chain
 	CreateSwapChain();
 	
-	OutputDebugString(L"8. Create descriptor heps\n");
+	LOGMESSAGE(L"8. Create descriptor heps\n");
 	CreateDescriptorHeaps();
 
-	OutputDebugString(L"9. Create render target views, set swap chain buffers size, set depth stencil and flush\n");
+	LOGMESSAGE(L"9. Create render target views, set swap chain buffers size, set depth stencil and flush\n");
 	ResizeBuffers();
 	
 }
@@ -170,7 +170,7 @@ void Gfx::GetClientOutputProperties() {
 		std::wstring a = L"Adapter: ";
 		a += adapterDesc.Description;
 		a += L"\n";
-		OutputDebugString(a.c_str());
+		LOGMESSAGE(a.c_str());
 
 		// get primary monitor description
 		while (adapter->EnumOutputs(i, &out) != DXGI_ERROR_NOT_FOUND) {
@@ -182,7 +182,7 @@ void Gfx::GetClientOutputProperties() {
 			std::wstring s = L"Output: ";
 			s += outDesc.DeviceName; 
 			s += L"\n";
-			OutputDebugString(s.c_str());
+			LOGMESSAGE(s.c_str());
 		
 			// populate mode descriptions lists
 			out->GetDisplayModeList(DXGI_FORMAT_B8G8R8A8_UNORM, flags, &count, nullptr);
@@ -314,7 +314,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE Gfx::GetDst() {
 
 void Gfx::ResizeBuffers() {
 	
-	OutputDebugString(L"Flush the queue and reset buffers\n");
+	LOGMESSAGE(L"Flush the queue and reset buffers\n");
 	FlushGPUCommandsQueue();
 
 	ThrowIfFailed(g_CommandList->Reset(g_CommandAllocator.Get(), nullptr));
@@ -324,7 +324,7 @@ void Gfx::ResizeBuffers() {
 	}
 	g_DepthStencilBuffer.Reset();
 
-	OutputDebugString(L"Set the new buffers' size\n");
+	LOGMESSAGE(L"Set the new buffers' size\n");
 	ThrowIfFailed(g_SwapChain->ResizeBuffers(g_SwapChainBuffersCount,
 		g_ClientWidth,
 		g_ClientHeight,
@@ -333,7 +333,7 @@ void Gfx::ResizeBuffers() {
 
 	g_CurrentBackbuffer = 0;
 
-	OutputDebugString(L"Create render target views\n");
+	LOGMESSAGE(L"Create render target views\n");
 	CD3DX12_CPU_DESCRIPTOR_HANDLE tmpHeapHandle(g_RtvDescHeap->GetCPUDescriptorHandleForHeapStart()) ;
 	for (int i = 0; i < g_SwapChainBuffersCount; ++i) {
 		ThrowIfFailed(g_SwapChain->GetBuffer(i, IID_PPV_ARGS(&g_Backbuffers[i])));
@@ -343,14 +343,14 @@ void Gfx::ResizeBuffers() {
 		tmpHeapHandle.Offset(1, g_RtvDescriptorSize);
 	}
 
-	OutputDebugString(L"Reset depth/stencil buffer\n");
+	LOGMESSAGE(L"Reset depth/stencil buffer\n");
 	CreateDepthStencilBuffer();
 
 
 	CloseCommandList();
 	FlushGPUCommandsQueue();
 
-	OutputDebugString(L"Set the Viewport\n");
+	LOGMESSAGE(L"Set the Viewport\n");
 	// describe the viewport
 	g_ViewPort = {};
 	g_ViewPort.MaxDepth = 1;
@@ -359,12 +359,12 @@ void Gfx::ResizeBuffers() {
 	g_ViewPort.Width = static_cast<float>(g_ClientWidth);
 	g_ViewPort.TopLeftX = g_ViewPort.TopLeftY = 0.0f;
 
-	OutputDebugString(L"Define Scissors Rectanlges if needed\n");
+	LOGMESSAGE(L"Define Scissors Rectanlges if needed\n");
 	g_ScissorsRectangle = { 0,0,static_cast<long>(g_ClientWidth / 2),static_cast<long>(g_ClientHeight / 2) };
 }
 
 void Gfx::Terminate() {
-	OutputDebugString(L"Finalizing graphics ... \n");
+	LOGMESSAGE(L"Finalizing graphics ... \n");
 	assert(g_Device);
 	FlushGPUCommandsQueue();
 	g_Device.Reset();

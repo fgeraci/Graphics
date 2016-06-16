@@ -38,6 +38,7 @@
     <ClCompile Include="App.cpp" />
     <ClCompile Include="Gfx.cpp" />
     <ClCompile Include="MyApp.cpp" />
+    <ClCompile Include="Ticker.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />

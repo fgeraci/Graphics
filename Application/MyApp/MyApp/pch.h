@@ -23,3 +23,10 @@
 #include "DirectXHelper.h"	// ThrowIfFailed
 #include "DirectXColors.h"	// DirectX::Colors
 #include "Ticker.h"			// FPS controller
+
+/* Debug macro */
+#ifdef _DEBUG
+#define LOGMESSAGE( str ) OutputDebugString( str );
+#else
+#define LOGMESSAGE( str )
+#endif

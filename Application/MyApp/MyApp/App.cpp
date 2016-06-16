@@ -2,6 +2,7 @@
 #include "pch.h"
 #include "MyApp.h"
 
+
 // Add required namespaces to simplify code - manually
 using namespace Windows::ApplicationModel;
 using namespace Windows::ApplicationModel::Core;
@@ -126,7 +127,7 @@ int main(Array<String^>^ args) {
 }
 
 void App::Run() {
-	OutputDebugString(L"App::Run\n");
+	LOGMESSAGE(L"App::Run\n");
 	while (!(this->IsWindowClosed)) {
 
 		/* Different types of Application's events processing
