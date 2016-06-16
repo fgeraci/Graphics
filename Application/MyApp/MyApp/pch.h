@@ -6,8 +6,6 @@
 #include <d3d12.h>
 #include "Common\d3dx12.h"
 #include <pix.h>
-#include <DirectXColors.h>
-#include <DirectXMath.h>
 #include <memory>
 #include <vector>
 #include <agile.h>
@@ -18,11 +16,16 @@
 #include <dxgidebug.h>
 #endif
 
+// DirectX
+#include <DirectXMath.h>
+#include <DirectXColors.h>			// Colors
+#include <DirectXPackedVector.h>	// XMCOLOR
+
 // Our includes
-#include <Windows.h>		// Performance counter
-#include "DirectXHelper.h"	// ThrowIfFailed
-#include "DirectXColors.h"	// DirectX::Colors
-#include "Ticker.h"			// FPS controller
+#include <Windows.h>				// Performance counter
+#include "DirectXHelper.h"			// ThrowIfFailed
+#include "DirectXColors.h"			// DirectX::Colors
+#include "Ticker.h"					// FPS controller
 
 /* Debug macro */
 #ifdef _DEBUG
