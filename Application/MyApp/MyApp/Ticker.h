@@ -8,13 +8,13 @@ ref class Ticker sealed {
 
 public:
 
-	property bool Paused;
-
 	property double DeltaTime {
 		double get() {
 			return g_DeltaTime;
 		}
 	}
+
+	property bool Paused;
 
 	property int FPS;
 
@@ -24,12 +24,13 @@ public:
 
 private:
 
+	double g_DeltaTime;
+
 	__int64 g_Cps;
 	__int64 g_LastUpdate;
 	__int64 g_GlobalDelta;
 	__int64 g_LastTickAttempt;
 	int g_CurrentFPS;
-	double g_DeltaTime;
 	__int64 g_TargetTime;
 	
 

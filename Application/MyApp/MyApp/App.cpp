@@ -1,7 +1,5 @@
 // Mandatory - all Windows dependencies - pre-compiled header
 #include "pch.h"
-#include "MyApp.h"
-
 
 // Add required namespaces to simplify code - manually
 using namespace Windows::ApplicationModel;
@@ -18,17 +16,13 @@ using namespace Application;
 ref class App sealed : public IFrameworkView {
 private:
 
-	CoreWindow^ g_CoreWindow;
 	Ticker^ g_Ticker;
 	MyApp^ g_MainApplication;
+	bool g_KeysDown[256];		// 218 total VirtualKeys - see reference
+	UINT g_MinWidth = 800;
+	UINT g_MinHeight = 600;
 
 protected:
-	
-	property CoreWindow^ MainWindow {
-		CoreWindow^ get() {
-			return this->g_CoreWindow;
-		}
-	}
 
 	property bool IsWindowClosed;
 
@@ -40,7 +34,7 @@ public:
 	{
 		/* Register Window's event handlers */
 		AppView->Activated += ref new TypedEventHandler		// pass OnActivate function address as the handler for the window's creation
-																	// to the Activated event handler - match its parameters with the generic <T,Ts>
+															// to the Activated event handler - match its parameters with the generic <T,Ts>
 			<CoreApplicationView^, IActivatedEventArgs^>(this, &App::OnActivated);
 
 		/* Application's state - CoreApplication::<event> handlers */
@@ -57,9 +51,6 @@ public:
 	virtual void SetWindow(Windows::UI::Core::CoreWindow ^window)
 	{
 
-		/* Set up Properties */
-		this->g_CoreWindow = window;
-
 		/* Windows event handlers */
 		window->Closed += ref new TypedEventHandler
 			<CoreWindow^, CoreWindowEventArgs^>(this, &App::OnWindowClosed);
@@ -69,6 +60,17 @@ public:
 
 		/* IO events handlers */
 
+		window->KeyDown += ref new TypedEventHandler
+			<CoreWindow^, KeyEventArgs^>(this, &App::OnKeyDown);
+
+		window->PointerPressed += ref new TypedEventHandler
+			<CoreWindow^, PointerEventArgs^>(this, &App::OnPointerPressed);
+
+		window->PointerReleased += ref new TypedEventHandler
+			<CoreWindow^, PointerEventArgs^>(this, &App::OnPointerReleased);
+
+		window->PointerWheelChanged += ref new TypedEventHandler
+			<CoreWindow^, PointerEventArgs^>(this, &App::OnPointerWheelChanged);
 	}
 	
 	// Instantiate the application here
@@ -109,8 +111,30 @@ public:
 	}
 
 	void OnWindowResized(CoreWindow^ pWnd, WindowSizeChangedEventArgs^ args) {
-		g_MainApplication->Resize(args->Size.Width, args->Size.Height);
+		// never let the buffers go below the minimum regardless of the window size
+		g_MainApplication->Resize(
+			args->Size.Width > g_MinWidth	? static_cast<UINT>(args->Size.Width)	: g_MinWidth,
+			args->Size.Height > g_MinHeight ? static_cast<UINT>(args->Size.Height)	: g_MinHeight);
 	}
+
+	/* IO Handlers */
+
+	void OnKeyDown(CoreWindow^ wnd, KeyEventArgs^ args) {
+		// update the g_KeysDown based on input and then pass it to MyApp
+	}
+
+	void OnPointerPressed(CoreWindow^ wnd, PointerEventArgs^ args) {
+
+	}
+
+	void OnPointerReleased(CoreWindow^ wnd, PointerEventArgs^ args) {
+
+	}
+
+	void OnPointerWheelChanged(CoreWindow^ wnd, PointerEventArgs^ args) {
+
+	}
+
 };
 
 ref class AppCreator sealed : IFrameworkViewSource {
@@ -135,7 +159,7 @@ void App::Run() {
 		alternative > coreWnd->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessUntilQuit); << infinite loop, not good.
 		We want to be in control of the processing loop, so instead, we will use ProcessAllIfPresent
 		*/
-		this->MainWindow->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
+		CoreWindow::GetForCurrentThread()->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
 		
 		if(g_Ticker->Tick()){
 			g_MainApplication->Update();

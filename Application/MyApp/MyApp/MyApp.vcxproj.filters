@@ -39,6 +39,7 @@
     <ClCompile Include="Gfx.cpp" />
     <ClCompile Include="MyApp.cpp" />
     <ClCompile Include="Ticker.cpp" />
+    <ClCompile Include="Geometries.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -54,6 +55,14 @@
       <Filter>Common</Filter>
     </ClInclude>
     <ClInclude Include="Ticker.h" />
+    <ClInclude Include="Geometries.h" />
+    <ClInclude Include="UploadBuffer.h" />
+    <ClInclude Include="Camera.h" />
+    <ClInclude Include="ITransformable.h" />
+    <ClInclude Include="Entity.h" />
+    <ClInclude Include="MathUtils.h">
+      <Filter>Common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
@@ -65,5 +74,9 @@
     <Image Include="Assets\SplashScreen_RU.png">
       <Filter>Assets</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="VertexShader.hlsl" />
+    <FxCompile Include="PixelShader.hlsl" />
   </ItemGroup>
 </Project>

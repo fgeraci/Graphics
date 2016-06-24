@@ -1,9 +1,6 @@
 #pragma once
 
 #include "pch.h"
-#include "Gfx.h"
-
-using namespace Windows::UI::Core;
 
 namespace Application {
 
