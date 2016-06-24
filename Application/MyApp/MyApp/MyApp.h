@@ -1,33 +1,38 @@
 #pragma once
 
 #include "pch.h"
-#include "Gfx.h"
 
-using namespace Windows::UI::Core;
+using namespace Windows::System;
+using namespace Windows::Foundation;
 
 namespace Application {
 
-	ref class MyApp sealed {
-
-	public:
-
-		property int GlobalFPS {
-			int get() {
-				return g_GlobalFPS;
-			}
-		}
-
-		MyApp();
-		void Update();
-		void Resize(UINT,UINT);
-		void Terminate();
-		
+	class MyApp sealed {
 
 	private:
 
-		Gfx^ g_Graphics;
-		int g_GlobalFPS = 30;
+		Entity* g_SelectedEntity = nullptr;
+		Gfx*	g_Graphics;
+		Point	g_LastPointerData;
+		
+		bool g_Paused = false;
 
+	public:
+
+		bool IsPaused() {
+			return g_Paused;
+		}
+
+		void SetPause(bool p) {
+			g_Paused = p;
+		}
+
+		MyApp();
+
+		// Application's main events
+		void Update(Ticker^ t);
+		void Resize(UINT, UINT);
+		void Terminate();
+		
 	};
-
 }

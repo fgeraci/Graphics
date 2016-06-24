@@ -2,6 +2,8 @@
 
 #include "pch.h"
 
+using namespace Application;
+
 Ticker::Ticker(int fps) {
 	if (!fps) {
 		throw Platform::Exception::CreateException(-1, "Invalid FPS parameter");
@@ -28,7 +30,9 @@ bool Ticker::Tick() {
 		if (g_GlobalDelta > g_Cps) {
 			FPS = g_CurrentFPS;
 			g_GlobalDelta = g_CurrentFPS = 0;
+#if defined (_DEBUG)
 			PrintCurrentFPS();
+#endif
 		}
 	}
 	g_LastTickAttempt = n;

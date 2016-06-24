@@ -1,15 +1,103 @@
 #include "pch.h"
-#include "Gfx.h"
+
 
 using namespace Windows::UI::Core;
 using namespace Application;
 using namespace DX;
 
+#pragma region Constructor
+
 Gfx::Gfx() {
-	LOGMESSAGE(L"Initializing Gfx\n");
+	
+	LOGMESSAGE(L"Gfx --> Initializing\n");
 	InitializeDebugging();
 	InitializeDirect3D();
+	InitializeMainCamera();
+	InitializePipeline();
+	
+	// test
+	AddPolygon(POLYGON_TYPE::CUBE);
+	AddPolygon(POLYGON_TYPE::GRID);
+	CloseCommandList();
+	FlushGPUCommandsQueue();
+	LOGMESSAGE(L"Gfx --> Initialization completed\n");
 }
+
+#pragma endregion Constructor
+
+#pragma region Draw
+
+void Gfx::Draw() {
+
+	ThrowIfFailed(g_CommandAllocator->Reset());
+
+	// We can define in this call which pipeline state to use
+	ThrowIfFailed(g_CommandList->Reset(g_CommandAllocator.Get(), g_PipelineStateTriangle.Get()));
+
+	g_CommandList->RSSetViewports(1, &g_ViewPort);
+	g_CommandList->RSSetScissorRects(1, &g_ScissorsRectangle);
+	g_CommandList->ResourceBarrier(1,
+		&CD3DX12_RESOURCE_BARRIER::Transition(
+			GetCurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	g_CommandList->ClearRenderTargetView(GetCurrentRtv(), g_BackBufferColor, 0, nullptr);
+	g_CommandList->ClearDepthStencilView(GetDsv(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+	g_CommandList->OMSetRenderTargets(1, &GetCurrentRtv(), true, &GetDsv());
+	/*   Send drawing commands here	*/
+	
+	UpdateCamera();
+	UpdateGrid();
+
+	ComPtr<ID3D12DescriptorHeap> descHeaps[] = { g_CbvDescHeap.Get() };
+	g_CommandList->SetDescriptorHeaps(_countof(descHeaps), descHeaps->GetAddressOf());
+	
+	g_CommandList->SetGraphicsRootSignature(g_RootSignature.Get());
+
+	/* Ideally same type geometries should be chained in a list for common buffers - TODO */
+	
+	int polygons = static_cast<int>(g_Polygons.size());
+
+	for (int i = 0; i < polygons; i++) {
+
+		Polygon* p = g_Polygons[i];
+		if(p->IsVisible()) {
+
+			std::vector<D3D12_VERTEX_BUFFER_VIEW> vbvlist = { p->VBView() };
+			std::vector<D3D12_INDEX_BUFFER_VIEW> ibvlist = { p->IBView() };
+
+			g_CommandList->IASetVertexBuffers(
+				p->StartVertexLocation() + (static_cast<int>(vbvlist.size()) - 1),			// start assembler input slot (0-15)
+				static_cast<int>(vbvlist.size()),							// we will bind to input slots (startSlots + (numBuffers-1))
+				vbvlist.data());
+			g_CommandList->IASetIndexBuffer(ibvlist.data());	
+			g_CommandList->IASetPrimitiveTopology(p->Topology());
+
+			// select the proper pilepile based on the required properties- this is NOT ideal per draw call, but will do for now.
+			g_CommandList->SetPipelineState(
+				p->Topology() == D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE ? g_PipelineStateLine.Get() : g_PipelineStateTriangle.Get());
+			
+			CD3DX12_GPU_DESCRIPTOR_HANDLE cbvDescHandle(g_CbvDescHeap->GetGPUDescriptorHandleForHeapStart());
+			g_CommandList->SetGraphicsRootDescriptorTable(0, cbvDescHandle);
+
+			g_CommandList->DrawIndexedInstanced(p->IndicesNumber(), 1, 0, 0, 0);
+		}
+	}
+
+	/*   End of drawwing commands	*/
+	g_CommandList->ResourceBarrier(1,
+		&CD3DX12_RESOURCE_BARRIER::Transition(
+			GetCurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+
+	CloseCommandList();
+
+	ThrowIfFailed(g_SwapChain->Present(0, 0));
+	g_CurrentBackbuffer = (g_CurrentBackbuffer + 1) % g_SwapChainBuffersCount;
+
+	FlushGPUCommandsQueue();
+}
+
+#pragma endregion Draw
+
+#pragma region Initialization
 
 void Gfx::InitializeDebugging() {
 #if defined (_DEBUG)
@@ -36,7 +124,7 @@ void Gfx::InitializeDirect3D() {
 			D3D_FEATURE_LEVEL_11_0,
 			IID_PPV_ARGS(&g_Device)
 		));
-	} catch (HRESULT e) {
+	} catch (...) { // catch all
 		
 		// fallback to WARP - Windows Advanced Rasterizer Platform = Software "GPU"
 		ComPtr<IDXGIAdapter> warpAdapter;
@@ -89,30 +177,23 @@ void Gfx::InitializeDirect3D() {
 	
 }
 
-void Gfx::Draw() {
-
-	ThrowIfFailed(g_CommandAllocator->Reset());
-	ThrowIfFailed(g_CommandList->Reset(g_CommandAllocator.Get(), nullptr));
-	
-	g_CommandList->ResourceBarrier(1,
-		&CD3DX12_RESOURCE_BARRIER::Transition(
-			GetCurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
-	g_CommandList->RSSetViewports(1, &g_ViewPort);
-	g_CommandList->RSSetScissorRects(1, &g_ScissorsRectangle);
-	g_CommandList->ClearRenderTargetView(GetCurrentRtv(), DirectX::Colors::LightSteelBlue, 0, nullptr);
-	g_CommandList->ClearDepthStencilView(GetDst(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
-	g_CommandList->OMSetRenderTargets(1, &GetCurrentRtv(), true, &GetDst());
-	g_CommandList->ResourceBarrier(1,
-		&CD3DX12_RESOURCE_BARRIER::Transition(
-			GetCurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
-
-	CloseCommandList();
-	
-	ThrowIfFailed(g_SwapChain->Present(0, 0));
-	g_CurrentBackbuffer = (g_CurrentBackbuffer + 1) % g_SwapChainBuffersCount;
-
-	FlushGPUCommandsQueue();
+void Gfx::InitializeMainCamera() {
+	g_MainCamera = std::make_unique<Camera>(true, g_MainCameraInitialPosition);
+	g_MainCameraBuffer = std::make_unique<UploadBuffer<ObjectConstantData>>(g_Device, 1, true);
+	UpdateCamera();
 }
+
+#pragma endregion Initialization
+
+#pragma region Accessors / Mutators
+
+Entity* Gfx::MainCamera() {
+	return static_cast<Entity*>(g_MainCamera.get());
+}
+
+#pragma endregion Accessors / Mutators
+
+#pragma region Utility
 
 /* Utility */
 
@@ -127,7 +208,7 @@ IDXGIAdapter1* Gfx::GetGPU() {
 		adapter->GetDesc1(&desc);
 		if (desc.DedicatedVideoMemory > maxMemFound) {
 			gpuAdapter = adapter.Detach();
-			maxMemFound = desc.DedicatedVideoMemory;
+			maxMemFound = static_cast<int>(desc.DedicatedVideoMemory);
 		}
 		i++;
 	}
@@ -197,17 +278,17 @@ void Gfx::GetClientOutputProperties() {
 	}
 
 	g_ClientWidth = g_PrimaryOutput.Width == 0 ?
-		CoreWindow::GetForCurrentThread()->Bounds.Width : g_PrimaryOutput.Width;
+		static_cast<UINT>(CoreWindow::GetForCurrentThread()->Bounds.Width) : static_cast<UINT>(g_PrimaryOutput.Width);
 	g_ClientHeight = g_PrimaryOutput.Height == 0 ?
-		CoreWindow::GetForCurrentThread()->Bounds.Height : g_PrimaryOutput.Height;
+		static_cast<UINT>(CoreWindow::GetForCurrentThread()->Bounds.Height) : static_cast<UINT>(g_PrimaryOutput.Height);
 }
 
 void Gfx::CheckAntialisngSupport() { 
 	D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS MSAA;
 	MSAA.Format = g_BackbufferFormat;
-	MSAA.SampleCount = 4; // at least X4 should be supported
+	MSAA.SampleCount = 8; // at least X4 should be supported
 	MSAA.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
-	MSAA.NumQualityLevels = 0;
+	MSAA.NumQualityLevels = 4;
 	ThrowIfFailed(g_Device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &MSAA, sizeof(MSAA)));
 	g_MsaaQualityLevels = MSAA.NumQualityLevels; 
 	// this is a hack, the pointer of the literal string is always true, if the first condition is false, it will print it.
@@ -216,7 +297,7 @@ void Gfx::CheckAntialisngSupport() {
 
 void Gfx::CreateDescriptorHeaps() {
 	
-	// render target descriptor
+	// render target heap descriptor
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = { };
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	rtvHeapDesc.NumDescriptors = g_SwapChainBuffersCount;
@@ -230,9 +311,19 @@ void Gfx::CreateDescriptorHeaps() {
 	dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	dsvHeapDesc.NodeMask = 0;
 
+	// constant buffers descriptors
+	// this can be done when initializing the pipeline
+	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
+	cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;	// shader need access to it!
+	cbvHeapDesc.NumDescriptors = 1;
+	cbvHeapDesc.NodeMask = 0;
+
+
 	// create heaps
 	ThrowIfFailed(g_Device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&g_RtvDescHeap)));
 	ThrowIfFailed(g_Device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&g_DsvDescHeap)));
+	ThrowIfFailed(g_Device->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&g_CbvDescHeap)));
 }
 
 void Gfx::CreateDepthStencilBuffer() {
@@ -271,7 +362,7 @@ void Gfx::CreateDepthStencilBuffer() {
 	g_Device->CreateDepthStencilView(
 		g_DepthStencilBuffer.Get(), 
 		nullptr, 
-		GetDst());
+		GetDsv());
 	
 	// transition resource state to be used as buffer (enables resource)
 	g_CommandList->ResourceBarrier(1,
@@ -308,13 +399,260 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE Gfx::GetCurrentRtv() {
 		g_RtvDescriptorSize);
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE Gfx::GetDst() {
+D3D12_CPU_DESCRIPTOR_HANDLE Gfx::GetDsv() {
 	return g_DsvDescHeap->GetCPUDescriptorHandleForHeapStart();
 }
 
-void Gfx::ResizeBuffers() {
+ComPtr<ID3D12Resource> Gfx::CreateDefaultBuffer(UINT byteSize, const void* data, ComPtr<ID3D12Resource>& uploadBuffer) {
 	
-	LOGMESSAGE(L"Flush the queue and reset buffers\n");
+	ComPtr<ID3D12Resource> newBuffer;
+	
+	// 1. create default buffer (GPU only access)
+	// we use CD3DX12 wrapper calss which provcides utility methods for creating and describing plain common buffer reosurces
+	ThrowIfFailed(g_Device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),		// type of heap this buffer will go to
+		D3D12_HEAP_FLAG_NONE,									// resource flags
+		&CD3DX12_RESOURCE_DESC::Buffer(byteSize),				// descr struct of resource which includes size
+		D3D12_RESOURCE_STATE_COMMON,							// initial resource barrier state
+		nullptr,												// resource id, none
+		IID_PPV_ARGS(newBuffer.GetAddressOf())					// out pointer
+	));
+
+	// 2. create upload heap buffer (cpu initialize for then copying to GPU)
+	ThrowIfFailed(g_Device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),		// type of heap this buffer will go to
+		D3D12_HEAP_FLAG_NONE,									
+		&CD3DX12_RESOURCE_DESC::Buffer(byteSize),				
+		D3D12_RESOURCE_STATE_GENERIC_READ,						// initial resource barrier state
+		nullptr,												
+		IID_PPV_ARGS(uploadBuffer.GetAddressOf())				
+	));
+
+	// 3. Describe the data we will write to the buffers
+	D3D12_SUBRESOURCE_DATA srd = {};
+	srd.pData = data;
+	srd.RowPitch = byteSize;
+	srd.SlicePitch = srd.RowPitch;
+
+	// 4. Have the CPU to copy the Data to the GPUs buffer
+		// Make the new default buffer to be a copy destination
+	g_CommandList->ResourceBarrier(
+		1,&CD3DX12_RESOURCE_BARRIER::Transition(newBuffer.Get(),D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST)
+	);
+		// Schedule the work
+	UpdateSubresources<1>(g_CommandList.Get(), newBuffer.Get(), uploadBuffer.Get(), 0, 0, 1, &srd);
+		// make the new default buffer to be a generic readable only
+	g_CommandList->ResourceBarrier(
+		1, &CD3DX12_RESOURCE_BARRIER::Transition(newBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ)
+	);
+
+	// 5. Return the new buffer
+	return newBuffer;
+}
+
+void Gfx::UpdateCamera() {
+	// only update if dirty
+	if(g_MainCamera->IsDirty()) {
+		// obtain matrices
+		XMVECTOR position	= g_MainCamera->Position();
+		XMVECTOR target		= g_MainCamera->Target();
+		XMVECTOR up			= Application::m_WorldUpVector;
+	
+		// compute projection matrix
+		XMMATRIX world = g_MainCamera->WorldMatrix();
+		XMMATRIX view = XMMatrixLookAtLH(position, target, up);
+		XMMATRIX proj = XMMatrixPerspectiveFovLH(0.25f*XM_PI, static_cast<float>(g_ClientWidth) / g_ClientHeight, 1.0f, 1000.0f);
+		g_MainCamera->SetWorldViewProject(world * view * proj);
+	}
+	
+	// update buffer
+	ObjectConstantData camera;
+	XMStoreFloat4x4(&camera.WorldViewProj, XMMatrixTranspose(g_MainCamera->WorldViewProject()));
+	g_MainCameraBuffer->WriteToBuffer(camera, 0);
+		
+}
+
+void Gfx::UpdateGrid() {
+	// if the grid is dynamic, update here - TODO
+}
+
+void Gfx::AddPolygon(POLYGON_TYPE type) {
+	AddPolygon(type, false);
+}
+
+void Gfx::AddPolygon(POLYGON_TYPE type, bool dyn) {
+	
+	Polygon *p = nullptr;
+	UINT totalVertices = 0, totalIndices = 0;
+
+	switch (type) {
+	case CUBE:
+		p = new Cube();
+		break;
+	case GRID:
+		g_Grid = std::make_unique<Grid>();
+		p = g_Grid.get();
+		break;
+	}
+	
+	if(!p->IsDynamic()) { // create an upload buffer and a gpu one, these elements will be static and wont change
+
+		// Create the Vertices buffer
+		
+		ComPtr<ID3D12Resource> tmpVUBuffer = nullptr;
+		ComPtr<ID3D12Resource> tmpVBuffer = CreateDefaultBuffer(p->VBBytesSize(), reinterpret_cast<void*>(p->Vertices().data()), tmpVUBuffer);
+			
+		totalVertices += p->VerticesNumber();
+
+		// Create the VB descriptor
+		D3D12_VERTEX_BUFFER_VIEW vbv;
+		vbv.SizeInBytes = p->VBBytesSize();								// size of the buffer
+		vbv.BufferLocation = tmpVBuffer->GetGPUVirtualAddress();	// location in GPU memory
+		vbv.StrideInBytes = Polygon::StrideSize;
+		std::vector<D3D12_VERTEX_BUFFER_VIEW> list = { vbv };
+		p->SetVBView(vbv);
+
+		// Create the Indices buffer
+		totalIndices += p->IndicesNumber();
+		ComPtr<ID3D12Resource> tmpIUBuffer = nullptr;
+		ComPtr<ID3D12Resource> tmpIBuffer = CreateDefaultBuffer(p->IBBytesSize(), reinterpret_cast<void*>(p->Indices().data()), tmpIUBuffer);
+		
+		// Create the IB descriptor
+		D3D12_INDEX_BUFFER_VIEW ibv;
+		ibv.Format = Polygon::IndexFormat;
+		ibv.SizeInBytes = p->IBBytesSize();
+		ibv.BufferLocation = tmpIBuffer->GetGPUVirtualAddress();
+		p->SetIBView(ibv);
+		
+		p->SetCPUVertexBuffer(tmpVUBuffer);
+		p->SetCPUIndexBuffer(tmpIUBuffer);
+		p->SetGPUVertexBuffer(tmpVBuffer);
+		p->SetGPUIndexBuffer(tmpIBuffer);
+
+		tmpVUBuffer = tmpVBuffer = tmpIUBuffer = tmpIBuffer = nullptr;
+
+	}
+
+	// add it to the queue
+	g_Polygons.push_back(p);
+}
+
+ComPtr<ID3DBlob> Gfx::LoadFileBlob(const std::wstring& fileName) {
+	
+	// read file and get size
+	std::ifstream file(fileName, std::ios::binary);
+	file.seekg(0, std::ios_base::end);
+	std::ifstream::pos_type size = (int) file.tellg();
+	file.seekg(0, std::ios_base::beg);
+
+	// set up blob
+	ComPtr<ID3DBlob> fileByteStream;
+	ThrowIfFailed(D3DCreateBlob(static_cast<UINT>(size), fileByteStream.GetAddressOf()));
+	
+	// fill up blob
+	file.read((char*)fileByteStream->GetBufferPointer(), size);
+	file.close();
+	return fileByteStream;
+}
+
+void Gfx::CreateInputLayout() {
+	g_InputLayout = {
+		{
+			"POSITION",										// sematic name
+			0,												// semantic index to add to name (in case there are more semantics with same name)
+			DXGI_FORMAT_R32G32B32_FLOAT,					// dxgi format type
+			0,												// Input-assembler identifier (0-15)
+			0,												// offset in the struct
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,		// this is per vertex struct
+			0												// How many times to draw it before advancing - 0 means per_vertex
+		},
+		{ "COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT,0,12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA ,0 }
+	};
+}
+
+void Gfx::CreateConstantBuffers() {
+	LOGMESSAGE(L"\t\tCreate the main camera constant buffer\n");
+	// this address needs to be offset if we want to point forward in the heap
+	UINT offset = 0;
+	D3D12_GPU_VIRTUAL_ADDRESS cbAddress = g_MainCameraBuffer->GetResource()->GetGPUVirtualAddress();
+	cbAddress += offset * g_MainCameraBuffer->UnitSize();
+	D3D12_CONSTANT_BUFFER_VIEW_DESC cbvd = {};
+	cbvd.BufferLocation = cbAddress;
+	cbvd.SizeInBytes = g_MainCameraBuffer->TotalSize();
+	g_Device->CreateConstantBufferView(&cbvd,
+		g_CbvDescHeap->GetCPUDescriptorHandleForHeapStart());
+}
+
+void Gfx::CreatePSO(D3D12_PRIMITIVE_TOPOLOGY_TYPE type, ComPtr<ID3D12PipelineState>& state) {
+	LOGMESSAGE(L"\tSet up the Pipeline state\n");
+	// get resources
+	ComPtr<ID3DBlob> vertexShader = LoadFileBlob(L"VertexShader.cso");
+	ComPtr<ID3DBlob> pixelShader = LoadFileBlob(L"PixelShader.cso");
+	// build the pipeline state
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineState = {};
+	ZeroMemory(&pipelineState, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
+	pipelineState.InputLayout = { g_InputLayout.data(), (UINT)g_InputLayout.size() };
+	pipelineState.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	pipelineState.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	pipelineState.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+	pipelineState.pRootSignature = g_RootSignature.Get();
+	pipelineState.VS = { reinterpret_cast<BYTE*>(vertexShader->GetBufferPointer()), vertexShader->GetBufferSize() };
+	pipelineState.PS = { reinterpret_cast<BYTE*>(pixelShader->GetBufferPointer()), pixelShader->GetBufferSize() };
+	pipelineState.PrimitiveTopologyType = type;
+	pipelineState.RTVFormats[0] = g_BackbufferFormat;
+	pipelineState.NumRenderTargets = 1;
+	pipelineState.DSVFormat = g_DepthStencilFormat;
+	pipelineState.SampleDesc.Count = m_MsaaEnabled ?
+		g_CurrentMSAaLevel : 1;
+	pipelineState.SampleDesc.Quality = m_MsaaEnabled ? (g_MsaaQualityLevels - 1) : 0;
+	pipelineState.SampleMask = UINT_MAX;
+	// create the PSO
+	g_Device->CreateGraphicsPipelineState(&pipelineState, IID_PPV_ARGS(&state));
+}
+
+void Gfx::CreateRootSignature() {
+
+	LOGMESSAGE(L"\t\tCreate the Root Signature to register the Constant Buffer to the Pipeline registers\n");
+	// Create the Root Parameter and the Descriptor Table, bind the Descriptor table to the parameter
+	CD3DX12_ROOT_PARAMETER rootParams[1];		// 1 single parameter for the Root Signature
+	CD3DX12_DESCRIPTOR_RANGE descriptorTable;
+	descriptorTable.Init(
+		D3D12_DESCRIPTOR_RANGE_TYPE_CBV,		// Type of element to be described in the table
+		1,										// how many
+		0										// to which register (b0)
+	);
+	rootParams[0].InitAsDescriptorTable(
+		1,										// Number of tables
+		&descriptorTable						// Head of array of tables
+	);
+	// Describe the Root Signature
+	CD3DX12_ROOT_SIGNATURE_DESC rootSignDesc(
+		1,										// Number of parameters
+		rootParams,								// The actual parameters array
+		0,										// static samplers (???)				 
+		nullptr,								// static sampler description
+		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT // Flag to allow access
+	);
+	// Serialize and create the Root Signature
+	ComPtr<ID3DBlob> serializedRootSign = nullptr;
+	ComPtr<ID3DBlob> errorBlob = nullptr;
+	ThrowIfFailed(D3D12SerializeRootSignature(&rootSignDesc, D3D_ROOT_SIGNATURE_VERSION_1, serializedRootSign.GetAddressOf(), errorBlob.GetAddressOf()));
+	if (errorBlob != nullptr) {
+		OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+	}
+	ThrowIfFailed(g_Device->CreateRootSignature(
+		0, serializedRootSign->GetBufferPointer(),
+		serializedRootSign->GetBufferSize(),
+		IID_PPV_ARGS(&g_RootSignature)));
+}
+
+#pragma endregion Utility
+
+#pragma region Reize
+
+void Gfx::ResizeBuffers() {
+	LOGMESSAGE(L"Resizing buffers ... \n");
+	LOGMESSAGE(L"\tFlush the queue and reset buffers\n");
 	FlushGPUCommandsQueue();
 
 	ThrowIfFailed(g_CommandList->Reset(g_CommandAllocator.Get(), nullptr));
@@ -324,7 +662,7 @@ void Gfx::ResizeBuffers() {
 	}
 	g_DepthStencilBuffer.Reset();
 
-	LOGMESSAGE(L"Set the new buffers' size\n");
+	LOGMESSAGE(L"\tSet the new buffers' size\n");
 	ThrowIfFailed(g_SwapChain->ResizeBuffers(g_SwapChainBuffersCount,
 		g_ClientWidth,
 		g_ClientHeight,
@@ -333,7 +671,7 @@ void Gfx::ResizeBuffers() {
 
 	g_CurrentBackbuffer = 0;
 
-	LOGMESSAGE(L"Create render target views\n");
+	LOGMESSAGE(L"\tCreate render target views\n");
 	CD3DX12_CPU_DESCRIPTOR_HANDLE tmpHeapHandle(g_RtvDescHeap->GetCPUDescriptorHandleForHeapStart()) ;
 	for (int i = 0; i < g_SwapChainBuffersCount; ++i) {
 		ThrowIfFailed(g_SwapChain->GetBuffer(i, IID_PPV_ARGS(&g_Backbuffers[i])));
@@ -343,14 +681,14 @@ void Gfx::ResizeBuffers() {
 		tmpHeapHandle.Offset(1, g_RtvDescriptorSize);
 	}
 
-	LOGMESSAGE(L"Reset depth/stencil buffer\n");
+	LOGMESSAGE(L"\tReset depth/stencil buffer\n");
 	CreateDepthStencilBuffer();
 
 
 	CloseCommandList();
 	FlushGPUCommandsQueue();
 
-	LOGMESSAGE(L"Set the Viewport\n");
+	LOGMESSAGE(L"\tSet the Viewport\n");
 	// describe the viewport
 	g_ViewPort = {};
 	g_ViewPort.MaxDepth = 1;
@@ -359,9 +697,13 @@ void Gfx::ResizeBuffers() {
 	g_ViewPort.Width = static_cast<float>(g_ClientWidth);
 	g_ViewPort.TopLeftX = g_ViewPort.TopLeftY = 0.0f;
 
-	LOGMESSAGE(L"Define Scissors Rectanlges if needed\n");
-	g_ScissorsRectangle = { 0,0,static_cast<long>(g_ClientWidth / 2),static_cast<long>(g_ClientHeight / 2) };
+	LOGMESSAGE(L"\tDefine Scissors Rectanlges if needed\n");
+	g_ScissorsRectangle = { 0,0,static_cast<long>(g_ClientWidth),static_cast<long>(g_ClientHeight) };
 }
+
+#pragma endregion Resize
+
+#pragma region Terminate
 
 void Gfx::Terminate() {
 	LOGMESSAGE(L"Finalizing graphics ... \n");
@@ -369,3 +711,41 @@ void Gfx::Terminate() {
 	FlushGPUCommandsQueue();
 	g_Device.Reset();
 }
+
+#pragma endregion Terminate
+
+#pragma region Pipeline
+
+void Gfx::InitializePipeline() {
+	
+	LOGMESSAGE(L"Initializing Pipeline\n");
+	
+	FlushGPUCommandsQueue();
+
+	ThrowIfFailed(g_CommandAllocator->Reset());
+	ThrowIfFailed(g_CommandList->Reset(g_CommandAllocator.Get(), nullptr));
+	
+	LOGMESSAGE(L"\tDescribing Vertices\n");
+	CreateInputLayout();
+
+	LOGMESSAGE(L"\tCreate the main camera's and other constant buffer\n");
+	CreateConstantBuffers();
+
+	LOGMESSAGE(L"\tCreate the Root Signature\n");
+	CreateRootSignature();
+
+	LOGMESSAGE(L"\tSet up the Pipeline state\n");
+	CreatePSO(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, g_PipelineStateTriangle);
+	CreatePSO(D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE, g_PipelineStateLine);
+		
+	// choose one and send it to the GPU's commands queue for now, we will alternate it will drawing based on the mesh
+	g_CommandList->SetPipelineState(g_PipelineStateTriangle.Get());
+
+	LOGMESSAGE(L"\tFlush the queue\n");
+	CloseCommandList();
+	FlushGPUCommandsQueue();
+	g_CommandAllocator->Reset();
+	g_CommandList->Reset(g_CommandAllocator.Get(), nullptr);
+}
+
+#pragma endregion Pipeline

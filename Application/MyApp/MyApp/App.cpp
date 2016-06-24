@@ -1,7 +1,30 @@
 // Mandatory - all Windows dependencies - pre-compiled header
 #include "pch.h"
-#include "MyApp.h"
 
+/* Notes 
+
+	For x86 systems (only): 
+	
+	All your classes must be 16-bytes aligned in the heap when using DirectXMath.
+	For this, do not forget to declare your class as such and override new & delete operators for every class.
+
+	__declspec(align(16)) class MyClass {
+		public:
+		
+		DirectX::XMMATRIX           m_projectionMatrix;
+
+		virtual ~MyClass() {
+		}
+
+		void* operator new(size_t i) {
+			return _mm_malloc(i,16);
+		}
+
+		void operator delete(void* p) {
+			_mm_free(p);
+		}
+	};
+*/
 
 // Add required namespaces to simplify code - manually
 using namespace Windows::ApplicationModel;
@@ -16,31 +39,26 @@ using namespace Platform;
 using namespace Application;
 
 ref class App sealed : public IFrameworkView {
+
 private:
 
-	CoreWindow^ g_CoreWindow;
 	Ticker^ g_Ticker;
-	MyApp^ g_MainApplication;
+	MyApp* g_MainApplication;
 
 protected:
-	
-	property CoreWindow^ MainWindow {
-		CoreWindow^ get() {
-			return this->g_CoreWindow;
-		}
-	}
 
 	property bool IsWindowClosed;
 
-public:
+	
 
+public:
 
 	// Inherited via IFrameworkView
 	virtual void Initialize(Windows::ApplicationModel::Core::CoreApplicationView ^AppView)
 	{
 		/* Register Window's event handlers */
 		AppView->Activated += ref new TypedEventHandler		// pass OnActivate function address as the handler for the window's creation
-																	// to the Activated event handler - match its parameters with the generic <T,Ts>
+															// to the Activated event handler - match its parameters with the generic <T,Ts>
 			<CoreApplicationView^, IActivatedEventArgs^>(this, &App::OnActivated);
 
 		/* Application's state - CoreApplication::<event> handlers */
@@ -57,25 +75,40 @@ public:
 	virtual void SetWindow(Windows::UI::Core::CoreWindow ^window)
 	{
 
-		/* Set up Properties */
-		this->g_CoreWindow = window;
-
 		/* Windows event handlers */
+
 		window->Closed += ref new TypedEventHandler
 			<CoreWindow^, CoreWindowEventArgs^>(this, &App::OnWindowClosed);
 
 		window->SizeChanged += ref new TypedEventHandler
 			<CoreWindow^, WindowSizeChangedEventArgs^>(this, &App::OnWindowResized);
 
+		window->VisibilityChanged += ref new TypedEventHandler
+			<CoreWindow^, VisibilityChangedEventArgs^>(this, &App::OnVisibilityChanged);
+
 		/* IO events handlers */
 
+		window->KeyDown += ref new TypedEventHandler
+			<CoreWindow^, KeyEventArgs^>(this, &App::OnKeyDown);
+
+		window->PointerMoved += ref new TypedEventHandler
+			<CoreWindow^, PointerEventArgs^>(this, &App::OnPointerMoved);
+
+		window->PointerPressed += ref new TypedEventHandler
+			<CoreWindow^, PointerEventArgs^>(this, &App::OnPointerPressed);
+
+		window->PointerReleased += ref new TypedEventHandler
+			<CoreWindow^, PointerEventArgs^>(this, &App::OnPointerReleased);
+
+		window->PointerWheelChanged += ref new TypedEventHandler
+			<CoreWindow^, PointerEventArgs^>(this, &App::OnPointerWheelChanged);
 	}
 	
 	// Instantiate the application here
 	virtual void Load(Platform::String ^entryPoint) { 
 		try {
-			g_MainApplication = ref new MyApp();
-			g_Ticker = ref new Ticker(g_MainApplication->GlobalFPS);
+			g_MainApplication = new MyApp();
+			g_Ticker = ref new Ticker(Application::m_GlobalFPS);
 		} catch (Exception^ e) {
 			MessageDialog(e->Message);
 		}
@@ -93,24 +126,53 @@ public:
 	}
 
 	void OnSuspending(Object^ pSender, SuspendingEventArgs^ args) {
+		g_MainApplication->SetPause(true);
 		g_MainApplication->Terminate();
 	}
 
 	void OnResuming(Object^ pSender, Object^ args) {
-		
+		g_MainApplication->SetPause(false);
 	}
 
-	void OnExiting(Object^ pSender, Object^ args) {
-	
-	}
+	void OnExiting(Object^ pSender, Object^ args) { }
 
 	void OnWindowClosed(CoreWindow^ pWnd, CoreWindowEventArgs^ args) {
 		this->IsWindowClosed = true;
 	}
 
 	void OnWindowResized(CoreWindow^ pWnd, WindowSizeChangedEventArgs^ args) {
-		g_MainApplication->Resize(args->Size.Width, args->Size.Height);
+		// never let the buffers go below the minimum regardless of the window size
+		g_MainApplication->Resize(
+			args->Size.Width > m_MinWidth	? static_cast<UINT>(args->Size.Width)	: m_MinWidth,
+			args->Size.Height > m_MinHeight ? static_cast<UINT>(args->Size.Height)	: m_MinHeight);
 	}
+
+	void OnVisibilityChanged(CoreWindow^ wnd, VisibilityChangedEventArgs^ args) {
+		bool pause = false;
+		if (!wnd->Visible) pause = true;
+		g_MainApplication->SetPause(pause);
+	}
+
+	/* IO Handlers */
+
+	void OnKeyDown(CoreWindow^ wnd, KeyEventArgs^ args) {
+		// we will handle keystrokes asynchronously within the applications control loop
+	}
+
+	/* Identity the event, centralize and send from SendPointerEvent */
+
+	void OnPointerMoved(CoreWindow^ wnd, PointerEventArgs^ args) {
+	}
+
+	void OnPointerPressed(CoreWindow^ wnd, PointerEventArgs^ args) {
+	}
+
+	void OnPointerReleased(CoreWindow^ wnd, PointerEventArgs^ args) {
+	}
+
+	void OnPointerWheelChanged(CoreWindow^ wnd, PointerEventArgs^ args) {
+	}
+
 };
 
 ref class AppCreator sealed : IFrameworkViewSource {
@@ -135,12 +197,10 @@ void App::Run() {
 		alternative > coreWnd->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessUntilQuit); << infinite loop, not good.
 		We want to be in control of the processing loop, so instead, we will use ProcessAllIfPresent
 		*/
-		this->MainWindow->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
+		CoreWindow::GetForCurrentThread()->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
 		
-		if(g_Ticker->Tick()){
-			g_MainApplication->Update();
-		}
+		if(!g_MainApplication->IsPaused())
+			g_MainApplication->Update(g_Ticker);
 		
-
 	}
 }
