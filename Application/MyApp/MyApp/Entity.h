@@ -8,6 +8,10 @@ namespace Application {
 	
 	protected:
 	
+		XMFLOAT4 g_Up;
+		XMFLOAT4 g_Forward;
+		XMFLOAT4 g_Right;
+		XMFLOAT4 g_Position;
 		XMFLOAT4X4 g_WorldMatrix;
 	
 	public:	

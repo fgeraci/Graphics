@@ -12,16 +12,12 @@ namespace Application {
 	private:
 		
 		bool g_IsPrimary;
-		XMFLOAT4 g_Position;
 		XMFLOAT4 g_Target;
-		XMFLOAT4 g_Up;
-		XMFLOAT4 g_Forward;
-		XMFLOAT4 g_Right;
 		
 	public:
 		
 		Camera() {
-			g_Position		= DirectX::XMFLOAT4(5.0f, 5.0f, -10.0f, 1.0f);
+			g_Position		= DirectX::XMFLOAT4(0.0f, 3.0f, -10.0f, 1.0f);
 			g_Up			= DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f);
 			g_Target		= DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
 			g_Right			= XMFLOAT4(1.0, 0.0f , 0.0f , 0.0f);

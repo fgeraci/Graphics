@@ -9,7 +9,7 @@ using namespace DX;
 
 Gfx::Gfx() {
 	
-	LOGMESSAGE(L"Initializing Gfx\n");
+	LOGMESSAGE(L"Gfx --> Initializing\n");
 	InitializeDebugging();
 	InitializeDirect3D();
 	InitializeMainCamera();
@@ -17,8 +17,10 @@ Gfx::Gfx() {
 	
 	// test
 	AddPolygon(POLYGON_TYPE::CUBE);
+	AddPolygon(POLYGON_TYPE::GRID);
 	CloseCommandList();
 	FlushGPUCommandsQueue();
+	LOGMESSAGE(L"Gfx --> Initialization completed\n");
 }
 
 #pragma endregion Constructor
@@ -28,7 +30,9 @@ Gfx::Gfx() {
 void Gfx::Draw() {
 
 	ThrowIfFailed(g_CommandAllocator->Reset());
-	ThrowIfFailed(g_CommandList->Reset(g_CommandAllocator.Get(), g_PipelineState.Get()));
+
+	// We can define in this call which pipeline state to use
+	ThrowIfFailed(g_CommandList->Reset(g_CommandAllocator.Get(), g_PipelineStateTriangle.Get()));
 
 	g_CommandList->RSSetViewports(1, &g_ViewPort);
 	g_CommandList->RSSetScissorRects(1, &g_ScissorsRectangle);
@@ -41,30 +45,43 @@ void Gfx::Draw() {
 	/*   Send drawing commands here	*/
 	
 	UpdateCamera();
+	UpdateGrid();
 
 	ComPtr<ID3D12DescriptorHeap> descHeaps[] = { g_CbvDescHeap.Get() };
 	g_CommandList->SetDescriptorHeaps(_countof(descHeaps), descHeaps->GetAddressOf());
 	
 	g_CommandList->SetGraphicsRootSignature(g_RootSignature.Get());
 
-	Polygon* p = g_Polygons[0];
-	std::vector<D3D12_VERTEX_BUFFER_VIEW> vbvlist = { p->VBView() };
-	std::vector<D3D12_INDEX_BUFFER_VIEW> ibvlist = { p->IBView() };
-
-	g_CommandList->IASetVertexBuffers(
-		p->StartVertexLocation() + (vbvlist.size() - 1),			// start assembler input slot (0-15)
-		static_cast<UINT>(vbvlist.size()),							// we will bind to input slots (startSlots + (numBuffers-1))
-		vbvlist.data());
-	g_CommandList->IASetIndexBuffer(ibvlist.data());
-	g_CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	UINT offset = 0;
-	CD3DX12_GPU_DESCRIPTOR_HANDLE cbvDescHandle(g_CbvDescHeap->GetGPUDescriptorHandleForHeapStart());
-	cbvDescHandle.Offset(offset);				// offset the heap if needed (move the array to the proper CBV Descriptor
-	g_CommandList->SetGraphicsRootDescriptorTable(0, cbvDescHandle);
-
-	g_CommandList->DrawIndexedInstanced(p->IndicesNumber(), 1, 0, 0, 0);
+	/* Ideally same type geometries should be chained in a list for common buffers - TODO */
 	
+	int polygons = static_cast<int>(g_Polygons.size());
+
+	for (int i = 0; i < polygons; i++) {
+
+		Polygon* p = g_Polygons[i];
+		if(p->IsVisible()) {
+
+			std::vector<D3D12_VERTEX_BUFFER_VIEW> vbvlist = { p->VBView() };
+			std::vector<D3D12_INDEX_BUFFER_VIEW> ibvlist = { p->IBView() };
+
+			g_CommandList->IASetVertexBuffers(
+				p->StartVertexLocation() + (static_cast<int>(vbvlist.size()) - 1),			// start assembler input slot (0-15)
+				static_cast<int>(vbvlist.size()),							// we will bind to input slots (startSlots + (numBuffers-1))
+				vbvlist.data());
+			g_CommandList->IASetIndexBuffer(ibvlist.data());	
+			g_CommandList->IASetPrimitiveTopology(p->Topology());
+
+			// select the proper pilepile based on the required properties- this is NOT ideal per draw call, but will do for now.
+			g_CommandList->SetPipelineState(
+				p->Topology() == D3D10_PRIMITIVE_TOPOLOGY_LINELIST ? g_PipelineStateLine.Get() : g_PipelineStateTriangle.Get());
+			
+			CD3DX12_GPU_DESCRIPTOR_HANDLE cbvDescHandle(g_CbvDescHeap->GetGPUDescriptorHandleForHeapStart());
+			g_CommandList->SetGraphicsRootDescriptorTable(0, cbvDescHandle);
+
+			g_CommandList->DrawIndexedInstanced(p->IndicesNumber(), 1, 0, 0, 0);
+		}
+	}
+
 	/*   End of drawwing commands	*/
 	g_CommandList->ResourceBarrier(1,
 		&CD3DX12_RESOURCE_BARRIER::Transition(
@@ -444,7 +461,15 @@ void Gfx::UpdateCamera() {
 	g_MainCameraBuffer->WriteToBuffer(camera, 0);
 }
 
+void Gfx::UpdateGrid() {
+	// if the grid is dynamic, update here - TODO
+}
+
 void Gfx::AddPolygon(POLYGON_TYPE type) {
+	AddPolygon(type, false);
+}
+
+void Gfx::AddPolygon(POLYGON_TYPE type, bool dyn) {
 	
 	Polygon *p = nullptr;
 	UINT totalVertices = 0, totalIndices = 0;
@@ -453,31 +478,50 @@ void Gfx::AddPolygon(POLYGON_TYPE type) {
 	case CUBE:
 		p = new Cube();
 		break;
+	case GRID:
+		g_Grid = std::make_unique<Grid>();
+		p = g_Grid.get();
+		break;
 	}
 	
-	// Create the Vertices buffer
-	g_GPUVertexBuffer = CreateDefaultBuffer(p->VBBytesSize(), reinterpret_cast<void*>(p->Vertices().data()), g_CPUVertexBuffer);
-	totalVertices += p->VerticesNumber();
+	if(!p->IsDynamic()) { // create an upload buffer and a gpu one, these elements will be static and wont change
 
-	// Create the VB descriptor
-	D3D12_VERTEX_BUFFER_VIEW vbv;
-	vbv.SizeInBytes = p->VBBytesSize();								// size of the buffer
-	vbv.BufferLocation = g_GPUVertexBuffer->GetGPUVirtualAddress();	// location in GPU memory
-	vbv.StrideInBytes = Polygon::StrideSize;
-	std::vector<D3D12_VERTEX_BUFFER_VIEW> list = { vbv };
-	p->SetVBView(vbv);
+		// Create the Vertices buffer
+		
+		ComPtr<ID3D12Resource> tmpVUBuffer = nullptr;
+		ComPtr<ID3D12Resource> tmpVBuffer = CreateDefaultBuffer(p->VBBytesSize(), reinterpret_cast<void*>(p->Vertices().data()), tmpVUBuffer);
+			
+		totalVertices += p->VerticesNumber();
 
-	// Create the Indices buffer
-	totalIndices += p->IndicesNumber();
-	g_GPUIndexBuffer = CreateDefaultBuffer(p->IBBytesSize(), reinterpret_cast<void*>(p->Indices().data()), g_CPUIndexBuffer);
-	
-	// Create the IB descriptor
-	D3D12_INDEX_BUFFER_VIEW ibv;
-	ibv.Format = Polygon::IndexFormat;
-	ibv.SizeInBytes = p->IBBytesSize();
-	ibv.BufferLocation = g_GPUIndexBuffer->GetGPUVirtualAddress();
-	p->SetIBView(ibv);
-	
+		// Create the VB descriptor
+		D3D12_VERTEX_BUFFER_VIEW vbv;
+		vbv.SizeInBytes = p->VBBytesSize();								// size of the buffer
+		vbv.BufferLocation = tmpVBuffer->GetGPUVirtualAddress();	// location in GPU memory
+		vbv.StrideInBytes = Polygon::StrideSize;
+		std::vector<D3D12_VERTEX_BUFFER_VIEW> list = { vbv };
+		p->SetVBView(vbv);
+
+		// Create the Indices buffer
+		totalIndices += p->IndicesNumber();
+		ComPtr<ID3D12Resource> tmpIUBuffer = nullptr;
+		ComPtr<ID3D12Resource> tmpIBuffer = CreateDefaultBuffer(p->IBBytesSize(), reinterpret_cast<void*>(p->Indices().data()), tmpIUBuffer);
+		
+		// Create the IB descriptor
+		D3D12_INDEX_BUFFER_VIEW ibv;
+		ibv.Format = Polygon::IndexFormat;
+		ibv.SizeInBytes = p->IBBytesSize();
+		ibv.BufferLocation = tmpIBuffer->GetGPUVirtualAddress();
+		p->SetIBView(ibv);
+		
+		p->SetCPUVertexBuffer(tmpVUBuffer);
+		p->SetCPUIndexBuffer(tmpIUBuffer);
+		p->SetGPUVertexBuffer(tmpVBuffer);
+		p->SetGPUIndexBuffer(tmpIBuffer);
+
+		tmpVUBuffer = tmpVBuffer = tmpIUBuffer = tmpIBuffer = nullptr;
+
+	}
+
 	// add it to the queue
 	g_Polygons.push_back(p);
 }
@@ -526,6 +570,33 @@ void Gfx::CreateConstantBuffers() {
 	cbvd.SizeInBytes = g_MainCameraBuffer->TotalSize();
 	g_Device->CreateConstantBufferView(&cbvd,
 		g_CbvDescHeap->GetCPUDescriptorHandleForHeapStart());
+}
+
+void Gfx::CreatePSO(D3D12_PRIMITIVE_TOPOLOGY_TYPE type, ComPtr<ID3D12PipelineState>& state) {
+	LOGMESSAGE(L"\tSet up the Pipeline state\n");
+	// get resources
+	ComPtr<ID3DBlob> vertexShader = LoadFileBlob(L"VertexShader.cso");
+	ComPtr<ID3DBlob> pixelShader = LoadFileBlob(L"PixelShader.cso");
+	// build the pipeline state
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineState = {};
+	ZeroMemory(&pipelineState, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
+	pipelineState.InputLayout = { g_InputLayout.data(), (UINT)g_InputLayout.size() };
+	pipelineState.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	pipelineState.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	pipelineState.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+	pipelineState.pRootSignature = g_RootSignature.Get();
+	pipelineState.VS = { reinterpret_cast<BYTE*>(vertexShader->GetBufferPointer()), vertexShader->GetBufferSize() };
+	pipelineState.PS = { reinterpret_cast<BYTE*>(pixelShader->GetBufferPointer()), pixelShader->GetBufferSize() };
+	pipelineState.PrimitiveTopologyType = type;
+	pipelineState.RTVFormats[0] = g_BackbufferFormat;
+	pipelineState.NumRenderTargets = 1;
+	pipelineState.DSVFormat = g_DepthStencilFormat;
+	pipelineState.SampleDesc.Count = m_MsaaEnabled ?
+		g_CurrentMSAaLevel : 1;
+	pipelineState.SampleDesc.Quality = m_MsaaEnabled ? (g_MsaaQualityLevels - 1) : 0;
+	pipelineState.SampleMask = UINT_MAX;
+	// create the PSO
+	g_Device->CreateGraphicsPipelineState(&pipelineState, IID_PPV_ARGS(&state));
 }
 
 void Gfx::CreateRootSignature() {
@@ -653,30 +724,11 @@ void Gfx::InitializePipeline() {
 	CreateRootSignature();
 
 	LOGMESSAGE(L"\tSet up the Pipeline state\n");
-		// get resources
-	ComPtr<ID3DBlob> vertexShader = LoadFileBlob(L"VertexShader.cso");
-	ComPtr<ID3DBlob> pixelShader = LoadFileBlob(L"PixelShader.cso");
-		// build the pipeline state
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineState = {};
-	ZeroMemory(&pipelineState, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
-	pipelineState.InputLayout = { g_InputLayout.data(), (UINT) g_InputLayout.size() };
-	pipelineState.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	pipelineState.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	pipelineState.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-	pipelineState.pRootSignature = g_RootSignature.Get();
-	pipelineState.VS = { reinterpret_cast<BYTE*>(vertexShader->GetBufferPointer()), vertexShader->GetBufferSize() };
-	pipelineState.PS = { reinterpret_cast<BYTE*>(pixelShader->GetBufferPointer()), pixelShader->GetBufferSize() };
-	pipelineState.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	pipelineState.RTVFormats[0] = g_BackbufferFormat;
-	pipelineState.NumRenderTargets = 1;
-	pipelineState.DSVFormat = g_DepthStencilFormat;
-	pipelineState.SampleDesc.Count = m_MsaaEnabled ?
-		g_CurrentMSAaLevel : 1;
-	pipelineState.SampleDesc.Quality = m_MsaaEnabled ? (g_MsaaQualityLevels - 1) : 0;
-	pipelineState.SampleMask = UINT_MAX;
-		// send it to the GPU's commands queue
-	g_Device->CreateGraphicsPipelineState(&pipelineState, IID_PPV_ARGS(&g_PipelineState));
-	g_CommandList->SetPipelineState(g_PipelineState.Get());
+	CreatePSO(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, g_PipelineStateTriangle);
+	CreatePSO(D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE, g_PipelineStateLine);
+		
+	// choose one and send it to the GPU's commands queue for now, we will alternate it will drawing based on the mesh
+	g_CommandList->SetPipelineState(g_PipelineStateTriangle.Get());
 
 	LOGMESSAGE(L"\tFlush the queue\n");
 	CloseCommandList();

@@ -53,6 +53,7 @@ namespace Application {
 		
 		// Objects
 		std::unique_ptr<Camera> g_MainCamera = nullptr;
+		std::unique_ptr<Grid> g_Grid = nullptr;
 
 		// Buffers
 		std::unique_ptr<UploadBuffer<ObjectConstantData>> g_MainCameraBuffer = nullptr;
@@ -62,10 +63,6 @@ namespace Application {
 		int g_CurrentMSAaLevel = 4;
 		bool g_DebugEnabled = false;
 		UINT64 g_CurrentFence = 0;
-
-		float g_Theta = 1.5f*XM_PI;
-		float g_Phi = XM_PIDIV4;
-		float g_Radius = 5.0f;
 
 		// D3D Resources
 		std::vector<Polygon*> g_Polygons;
@@ -95,11 +92,14 @@ namespace Application {
 		ComPtr<ID3D12Resource> g_DepthStencilBuffer;
 		ComPtr<ID3D12RootSignature> g_RootSignature;
 		std::vector<D3D12_INPUT_ELEMENT_DESC> g_InputLayout;
-		ComPtr<ID3D12PipelineState> g_PipelineState;
+		ComPtr<ID3D12PipelineState> g_PipelineStateTriangle;
+		ComPtr<ID3D12PipelineState> g_PipelineStateLine;
 		
 		// For Draw Calls
 		void UpdateCamera();
+		void UpdateGrid();
 		void AddPolygon(POLYGON_TYPE);
+		void AddPolygon(POLYGON_TYPE, bool dyn);
 
 		// Native properties
 		UINT g_MsaaQualityLevels;
@@ -128,6 +128,7 @@ namespace Application {
 		void CreateInputLayout();
 		void CreateConstantBuffers();
 		void CreateRootSignature();
+		void CreatePSO(D3D12_PRIMITIVE_TOPOLOGY_TYPE, ComPtr<ID3D12PipelineState>&);
 			// creates a generic buffer - ID3DResource for index and vertex buffers
 		ComPtr<ID3D12Resource> CreateDefaultBuffer(UINT,const void*, ComPtr<ID3D12Resource>&);
 		ComPtr<ID3DBlob> LoadFileBlob(const std::wstring&);
