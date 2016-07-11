@@ -2,6 +2,8 @@
 
 #include "pch.h"
 
+using namespace Application;
+
 Ticker::Ticker(int fps) {
 	if (!fps) {
 		throw Platform::Exception::CreateException(-1, "Invalid FPS parameter");

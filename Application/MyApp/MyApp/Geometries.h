@@ -189,7 +189,7 @@ namespace Application {
 	private:
 		
 		
-		XMFLOAT4 g_Color = XMFLOAT4(Colors::White);
+		XMFLOAT4 g_Color = XMFLOAT4(Colors::LightGreen);
 
 	public:
 

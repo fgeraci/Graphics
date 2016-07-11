@@ -12,18 +12,17 @@ namespace Application {
 	private:
 		
 		bool g_IsPrimary;
-		XMFLOAT4 g_Target;
+		XMVECTOR g_Target;
 		
 	public:
 		
 		Camera() {
-			g_Position		= DirectX::XMFLOAT4(0.0f, 3.0f, -10.0f, 1.0f);
-			g_Up			= DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f);
-			g_Target		= DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
-			g_Right			= XMFLOAT4(1.0, 0.0f , 0.0f , 0.0f);
-			g_Forward		= XMFLOAT4(	g_Position.x - g_Target.x ,
-										g_Position.y - g_Target.y , g_Position.z - g_Target.z, 0.0f);
-			g_WorldMatrix	= MatrixIdentity();
+			g_Position		= XMVectorSet(0.0f, 3.0f, -10.0f, 1.0f);
+			g_Up			= XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+			g_Target		= XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
+			g_Right			= XMVectorSet(1.0, 0.0f , 0.0f , 0.0f);
+			g_Forward		= XMVector3Normalize(XMVectorSubtract(g_Target, g_Position));
+			g_WorldMatrix	= XMMatrixIdentity();
 		}
 
 		Camera(bool isPrimary) : Camera() {
@@ -32,22 +31,22 @@ namespace Application {
 
 		Camera(bool isPrimary, XMFLOAT4 initPosition) : Camera(isPrimary) {
 			g_IsPrimary = isPrimary;
-			g_Position = initPosition;
+			g_Position = XMLoadFloat4(&initPosition);
 		}
 
-		XMFLOAT4 Position() { return g_Position; }
-		XMFLOAT4 Target()	{ return g_Target; }
-		XMFLOAT4 Up()		{ return g_Up; }
+		XMVECTOR Position() { return g_Position; }
+		XMVECTOR Target()	{ return g_Target; }
+		XMVECTOR Up()		{ return g_Up; }
 		bool IsPrimary()	{ return g_IsPrimary; }
 
-		void Translate(DIRECTION dir, float speed) {
-			switch (dir) {
-			case LOCAL_FORWARD:
-				break;
-			}
+		void Translate(DIRECTION d, float f) override { 
+			// camera need to update target
+			XMVECTOR oldPos = 1 * g_Position;
+			Entity::Translate(d, f); 
+			g_Target += XMVectorSubtract(g_Position, oldPos);
 		}
 
-		void Rotate()	 { }
-		void Scale()	 { }
+		void Rotate() override { }
+		void Scale() override { }
 	};
 }

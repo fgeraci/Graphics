@@ -17,7 +17,7 @@ ref class App sealed : public IFrameworkView {
 private:
 
 	Ticker^ g_Ticker;
-	MyApp^ g_MainApplication;
+	MyApp* g_MainApplication;
 	bool g_KeysDown[256];		// 218 total VirtualKeys - see reference
 	UINT g_MinWidth = 800;
 	UINT g_MinHeight = 600;
@@ -76,8 +76,8 @@ public:
 	// Instantiate the application here
 	virtual void Load(Platform::String ^entryPoint) { 
 		try {
-			g_MainApplication = ref new MyApp();
-			g_Ticker = ref new Ticker(g_MainApplication->GlobalFPS);
+			g_MainApplication = new MyApp();
+			g_Ticker = ref new Ticker(g_MainApplication->GlobalFPS());
 		} catch (Exception^ e) {
 			MessageDialog(e->Message);
 		}
@@ -120,7 +120,7 @@ public:
 	/* IO Handlers */
 
 	void OnKeyDown(CoreWindow^ wnd, KeyEventArgs^ args) {
-		// update the g_KeysDown based on input and then pass it to MyApp
+		// we will handle keystrokes asynchronously within the applications control loop
 	}
 
 	void OnPointerPressed(CoreWindow^ wnd, PointerEventArgs^ args) {
@@ -161,10 +161,7 @@ void App::Run() {
 		*/
 		CoreWindow::GetForCurrentThread()->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
 		
-		if(g_Ticker->Tick()){
-			g_MainApplication->Update();
-		}
+		g_MainApplication->Update(g_Ticker);
 		
-
 	}
 }

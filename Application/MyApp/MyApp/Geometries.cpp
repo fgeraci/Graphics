@@ -85,7 +85,7 @@ Grid::Grid(int size) {
 		}
 	}
 	g_PolygonType = POLYGON_TYPE::GRID;
-	g_Topology = D3D10_PRIMITIVE_TOPOLOGY_LINELIST;
+	g_Topology = D3D_PRIMITIVE_TOPOLOGY_LINELIST;
 	g_VerticesNumber = static_cast<UINT>(g_Vertices.size());
 	g_IndicesNumber = static_cast<UINT>(g_Indices.size());
 	g_VBBytesSize = g_VerticesNumber * Polygon::StrideSize;

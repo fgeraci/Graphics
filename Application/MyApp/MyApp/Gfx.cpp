@@ -39,7 +39,7 @@ void Gfx::Draw() {
 	g_CommandList->ResourceBarrier(1,
 		&CD3DX12_RESOURCE_BARRIER::Transition(
 			GetCurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
-	g_CommandList->ClearRenderTargetView(GetCurrentRtv(), DirectX::Colors::DarkRed, 0, nullptr);
+	g_CommandList->ClearRenderTargetView(GetCurrentRtv(), g_BackBufferColor, 0, nullptr);
 	g_CommandList->ClearDepthStencilView(GetDsv(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 	g_CommandList->OMSetRenderTargets(1, &GetCurrentRtv(), true, &GetDsv());
 	/*   Send drawing commands here	*/
@@ -73,7 +73,7 @@ void Gfx::Draw() {
 
 			// select the proper pilepile based on the required properties- this is NOT ideal per draw call, but will do for now.
 			g_CommandList->SetPipelineState(
-				p->Topology() == D3D10_PRIMITIVE_TOPOLOGY_LINELIST ? g_PipelineStateLine.Get() : g_PipelineStateTriangle.Get());
+				p->Topology() == D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE ? g_PipelineStateLine.Get() : g_PipelineStateTriangle.Get());
 			
 			CD3DX12_GPU_DESCRIPTOR_HANDLE cbvDescHandle(g_CbvDescHeap->GetGPUDescriptorHandleForHeapStart());
 			g_CommandList->SetGraphicsRootDescriptorTable(0, cbvDescHandle);
@@ -178,12 +178,20 @@ void Gfx::InitializeDirect3D() {
 }
 
 void Gfx::InitializeMainCamera() {
-	g_MainCamera = std::make_unique<Camera>(true);
+	g_MainCamera = std::make_unique<Camera>(true, g_MainCameraInitialPosition);
 	g_MainCameraBuffer = std::make_unique<UploadBuffer<ObjectConstantData>>(g_Device, 1, true);
 	UpdateCamera();
 }
 
 #pragma endregion Initialization
+
+#pragma region Accessors / Mutators
+
+Entity* Gfx::MainCamera() {
+	return static_cast<Entity*>(g_MainCamera.get());
+}
+
+#pragma endregion Accessors / Mutators
 
 #pragma region Utility
 
@@ -445,12 +453,12 @@ ComPtr<ID3D12Resource> Gfx::CreateDefaultBuffer(UINT byteSize, const void* data,
 void Gfx::UpdateCamera() {
 	
 	// obtain matrices
-	XMVECTOR position	= XMLoadFloat4(&g_MainCamera->Position()); // XMVectorSet (x, y, z, 1.0f);
-	XMVECTOR target		= XMLoadFloat4(&g_MainCamera->Target());
-	XMVECTOR up			= XMLoadFloat4(&g_MainCamera->Up());
+	XMVECTOR position	= g_MainCamera->Position();
+	XMVECTOR target		= g_MainCamera->Target();
+	XMVECTOR up			= g_MainCamera->Up();
 	
 	// compute projection matrix
-	XMMATRIX world = XMLoadFloat4x4(&g_MainCamera->WorldMatrix());
+	XMMATRIX world = g_MainCamera->WorldMatrix();
 	XMMATRIX view = XMMatrixLookAtLH(position, target, up);
 	XMMATRIX proj = XMMatrixPerspectiveFovLH(0.25f*XM_PI, static_cast<float>(g_ClientWidth) / g_ClientHeight, 1.0f, 1000.0f);
 	XMMATRIX worldViewProj = world * view * proj;

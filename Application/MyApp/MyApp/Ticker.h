@@ -4,45 +4,48 @@
 
 using namespace Platform;
 
-ref class Ticker sealed {
+namespace Application {
 
-public:
+	ref class Ticker sealed {
 
-	property double DeltaTime {
-		double get() {
-			return g_DeltaTime;
+	public:
+
+		property double DeltaTime {
+			double get() {
+				return g_DeltaTime;
+			}
 		}
-	}
 
-	property bool Paused;
+		property bool Paused;
 
-	property int FPS;
+		property int FPS;
 
-	bool Tick();
+		bool Tick();
 
-	Ticker(int);
+		Ticker(int);
 
-private:
+	private:
 
-	double g_DeltaTime;
+		double g_DeltaTime;
 
-	__int64 g_Cps;
-	__int64 g_LastUpdate;
-	__int64 g_GlobalDelta;
-	__int64 g_LastTickAttempt;
-	int g_CurrentFPS;
-	__int64 g_TargetTime;
+		__int64 g_Cps;
+		__int64 g_LastUpdate;
+		__int64 g_GlobalDelta;
+		__int64 g_LastTickAttempt;
+		int g_CurrentFPS;
+		__int64 g_TargetTime;
 	
 
-	UINT g_FPS = 0;
+		UINT g_FPS = 0;
 
-	property __int64 Now {
-		__int64 get() {
-			__int64 time;
-			QueryPerformanceCounter((LARGE_INTEGER*)&time);
-			return time;
+		property __int64 Now {
+			__int64 get() {
+				__int64 time;
+				QueryPerformanceCounter((LARGE_INTEGER*)&time);
+				return time;
+			}
 		}
-	}
 
-	void PrintCurrentFPS();
-};
+		void PrintCurrentFPS();
+	};
+}

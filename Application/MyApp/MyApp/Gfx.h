@@ -22,25 +22,26 @@ namespace Application {
 		XMFLOAT4X4 WorldViewProj = MatrixIdentity();	// from MathUtils.h - a small helper we added
 	};
 
-	ref class Gfx sealed {
+	class Gfx sealed {
 
 	public:
 
 		Gfx();
+
 		void Draw();
 		void ResizeBuffers();
 		void Terminate();
 
-		property UINT ClientWidht {
-			void set(UINT w) {
-				g_ClientWidth = w;
-			}
+		void ClientWidht(UINT w) {
+			g_ClientWidth = w;
 		}
-		property UINT ClientHeight {
-			void set(UINT h) {
-				g_ClientHeight = h;
-			}
+
+		void ClientHeight(UINT h) {
+			g_ClientHeight = h;
 		}
+
+		// Accessors / Mutators
+		Entity* MainCamera();
 
 	private:
 
@@ -63,6 +64,8 @@ namespace Application {
 		int g_CurrentMSAaLevel = 4;
 		bool g_DebugEnabled = false;
 		UINT64 g_CurrentFence = 0;
+		XMVECTORF32 g_BackBufferColor = DirectX::Colors::Black;
+		XMFLOAT4 g_MainCameraInitialPosition = DirectX::XMFLOAT4(0.0f, 4.0f, -15.0f, 1.0f);
 
 		// D3D Resources
 		std::vector<Polygon*> g_Polygons;
