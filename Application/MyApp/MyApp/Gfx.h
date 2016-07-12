@@ -1,4 +1,5 @@
 #pragma once
+
 #include "pch.h"
 
 using namespace Microsoft::WRL;
@@ -19,8 +20,10 @@ using namespace DirectX;
 namespace Application {
 
 	struct ObjectConstantData {
-		XMFLOAT4X4 WorldViewProj = MatrixIdentity();	// from MathUtils.h - a small helper we added
+		XMFLOAT4X4 WorldViewProj = Math::MatrixIdentity();	// from MathUtils.h - a small helper we added
 	};
+
+	
 
 	class Gfx sealed {
 
@@ -45,20 +48,6 @@ namespace Application {
 
 	private:
 
-		static const bool g_UseGPU = false;
-		static const bool g_RestrictToPrimaryOutput = false;
-		static const bool m_MsaaEnabled = false;
-		static const UINT g_SwapChainBuffersCount = 2;
-		static const DXGI_FORMAT g_BackbufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-		static const DXGI_FORMAT g_DepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		
-		// Objects
-		std::unique_ptr<Camera> g_MainCamera = nullptr;
-		std::unique_ptr<Grid> g_Grid = nullptr;
-
-		// Buffers
-		std::unique_ptr<UploadBuffer<ObjectConstantData>> g_MainCameraBuffer = nullptr;
-
 		// Default Values
 		int g_CurrentBackbuffer = 0;
 		int g_CurrentMSAaLevel = 4;
@@ -66,6 +55,20 @@ namespace Application {
 		UINT64 g_CurrentFence = 0;
 		XMVECTORF32 g_BackBufferColor = DirectX::Colors::Black;
 		XMFLOAT4 g_MainCameraInitialPosition = DirectX::XMFLOAT4(0.0f, 4.0f, -15.0f, 1.0f);
+		static const bool g_UseGPU = false;
+		static const bool g_RestrictToPrimaryOutput = false;
+			// Multisample is not supported in the swap chain, it need to be created on a separate render target
+		static const bool m_MsaaEnabled = false;
+		static const UINT g_SwapChainBuffersCount = 2;
+		static const DXGI_FORMAT g_BackbufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+		static const DXGI_FORMAT g_DepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		
+		// Main Scene Objects
+		std::unique_ptr<Camera> g_MainCamera = nullptr;
+		std::unique_ptr<Grid> g_Grid = nullptr;
+
+		// Buffers
+		std::unique_ptr<UploadBuffer<ObjectConstantData>> g_MainCameraBuffer = nullptr;
 
 		// D3D Resources
 		std::vector<Polygon*> g_Polygons;

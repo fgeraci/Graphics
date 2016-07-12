@@ -1,6 +1,31 @@
 // Mandatory - all Windows dependencies - pre-compiled header
 #include "pch.h"
 
+/* Notes 
+
+	For x86 systems (only): 
+	
+	All your classes must be 16-bytes aligned in the heap when using DirectXMath.
+	For this, do not forget to declare your class as such and override new & delete operators for every class.
+
+	__declspec(align(16)) class MyClass {
+		public:
+		
+		DirectX::XMMATRIX           m_projectionMatrix;
+
+		virtual ~MyClass() {
+		}
+
+		void* operator new(size_t i) {
+			return _mm_malloc(i,16);
+		}
+
+		void operator delete(void* p) {
+			_mm_free(p);
+		}
+	};
+*/
+
 // Add required namespaces to simplify code - manually
 using namespace Windows::ApplicationModel;
 using namespace Windows::ApplicationModel::Core;
@@ -14,20 +39,34 @@ using namespace Platform;
 using namespace Application;
 
 ref class App sealed : public IFrameworkView {
+
 private:
 
 	Ticker^ g_Ticker;
 	MyApp* g_MainApplication;
-	bool g_KeysDown[256];		// 218 total VirtualKeys - see reference
-	UINT g_MinWidth = 800;
-	UINT g_MinHeight = 600;
+	bool g_PointerPressed = false;
+
+	/* Utility */
+
+	void SendPointerEvent(CoreWindow^ wnd, PointerEventArgs^ args, Application::POINT_EVENT_TYPE t) {
+		VirtualKey k;
+		if (args->CurrentPoint->Properties->IsRightButtonPressed) {
+			k = VirtualKey::RightButton;
+		} else if (args->CurrentPoint->Properties->IsLeftButtonPressed) {
+			k = VirtualKey::LeftButton;
+		} else if (args->CurrentPoint->Properties->IsMiddleButtonPressed) {
+			k = VirtualKey::MiddleButton;
+		}
+		g_MainApplication->ProcessPointer(args->CurrentPoint->Position, k, t);
+	}
 
 protected:
 
 	property bool IsWindowClosed;
 
-public:
+	
 
+public:
 
 	// Inherited via IFrameworkView
 	virtual void Initialize(Windows::ApplicationModel::Core::CoreApplicationView ^AppView)
@@ -52,16 +91,23 @@ public:
 	{
 
 		/* Windows event handlers */
+
 		window->Closed += ref new TypedEventHandler
 			<CoreWindow^, CoreWindowEventArgs^>(this, &App::OnWindowClosed);
 
 		window->SizeChanged += ref new TypedEventHandler
 			<CoreWindow^, WindowSizeChangedEventArgs^>(this, &App::OnWindowResized);
 
+		window->VisibilityChanged += ref new TypedEventHandler
+			<CoreWindow^, VisibilityChangedEventArgs^>(this, &App::OnVisibilityChanged);
+
 		/* IO events handlers */
 
 		window->KeyDown += ref new TypedEventHandler
 			<CoreWindow^, KeyEventArgs^>(this, &App::OnKeyDown);
+
+		window->PointerMoved += ref new TypedEventHandler
+			<CoreWindow^, PointerEventArgs^>(this, &App::OnPointerMoved);
 
 		window->PointerPressed += ref new TypedEventHandler
 			<CoreWindow^, PointerEventArgs^>(this, &App::OnPointerPressed);
@@ -77,7 +123,7 @@ public:
 	virtual void Load(Platform::String ^entryPoint) { 
 		try {
 			g_MainApplication = new MyApp();
-			g_Ticker = ref new Ticker(g_MainApplication->GlobalFPS());
+			g_Ticker = ref new Ticker(Application::m_GlobalFPS);
 		} catch (Exception^ e) {
 			MessageDialog(e->Message);
 		}
@@ -95,16 +141,15 @@ public:
 	}
 
 	void OnSuspending(Object^ pSender, SuspendingEventArgs^ args) {
+		g_MainApplication->SetPause(true);
 		g_MainApplication->Terminate();
 	}
 
 	void OnResuming(Object^ pSender, Object^ args) {
-		
+		g_MainApplication->SetPause(false);
 	}
 
-	void OnExiting(Object^ pSender, Object^ args) {
-	
-	}
+	void OnExiting(Object^ pSender, Object^ args) { }
 
 	void OnWindowClosed(CoreWindow^ pWnd, CoreWindowEventArgs^ args) {
 		this->IsWindowClosed = true;
@@ -113,8 +158,14 @@ public:
 	void OnWindowResized(CoreWindow^ pWnd, WindowSizeChangedEventArgs^ args) {
 		// never let the buffers go below the minimum regardless of the window size
 		g_MainApplication->Resize(
-			args->Size.Width > g_MinWidth	? static_cast<UINT>(args->Size.Width)	: g_MinWidth,
-			args->Size.Height > g_MinHeight ? static_cast<UINT>(args->Size.Height)	: g_MinHeight);
+			args->Size.Width > m_MinWidth	? static_cast<UINT>(args->Size.Width)	: m_MinWidth,
+			args->Size.Height > m_MinHeight ? static_cast<UINT>(args->Size.Height)	: m_MinHeight);
+	}
+
+	void OnVisibilityChanged(CoreWindow^ wnd, VisibilityChangedEventArgs^ args) {
+		bool pause = false;
+		if (!wnd->Visible) pause = true;
+		g_MainApplication->SetPause(pause);
 	}
 
 	/* IO Handlers */
@@ -123,16 +174,28 @@ public:
 		// we will handle keystrokes asynchronously within the applications control loop
 	}
 
-	void OnPointerPressed(CoreWindow^ wnd, PointerEventArgs^ args) {
+	/* Identity the event, centralize and send from SendPointerEvent */
 
+	void OnPointerMoved(CoreWindow^ wnd, PointerEventArgs^ args) {
+		if(g_PointerPressed) {
+			SendPointerEvent(wnd, args, Application::POINT_EVENT_TYPE::DRAG);
+		}
+	}
+
+	void OnPointerPressed(CoreWindow^ wnd, PointerEventArgs^ args) {
+		SendPointerEvent(wnd, args, Application::POINT_EVENT_TYPE::DOWN);
+		g_PointerPressed = true;
 	}
 
 	void OnPointerReleased(CoreWindow^ wnd, PointerEventArgs^ args) {
-
+		g_PointerPressed = false;
 	}
 
 	void OnPointerWheelChanged(CoreWindow^ wnd, PointerEventArgs^ args) {
-
+		g_MainApplication->ProcessPointer(args->CurrentPoint->Position,
+			VirtualKey::MiddleButton,		// dummy value
+			POINT_EVENT_TYPE::WHEEL,
+			args->CurrentPoint->Properties->MouseWheelDelta);
 	}
 
 };
@@ -161,7 +224,8 @@ void App::Run() {
 		*/
 		CoreWindow::GetForCurrentThread()->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
 		
-		g_MainApplication->Update(g_Ticker);
+		if(!g_MainApplication->IsPaused())
+			g_MainApplication->Update(g_Ticker);
 		
 	}
 }

@@ -47,13 +47,9 @@ Cube::Cube() {
 	g_VerticesNumber = static_cast<UINT>(g_Vertices.size());
 	g_IndicesNumber = static_cast<UINT>(g_Indices.size());
 	g_VBBytesSize = g_VerticesNumber * Polygon::StrideSize;
-	g_IBBytesSize = g_IndicesNumber * sizeof(Polygon::IndexFormat);
+	g_IBBytesSize = g_IndicesNumber * Polygon::IndexSize;
 	g_Name = L"Cube";
 }
-
-void Cube::Rotate()		{}
-void Cube::Translate(DIRECTION dir, float speed)	{}
-void Cube::Scale()		{}
 
 #pragma endregion Cube
 
@@ -89,12 +85,8 @@ Grid::Grid(int size) {
 	g_VerticesNumber = static_cast<UINT>(g_Vertices.size());
 	g_IndicesNumber = static_cast<UINT>(g_Indices.size());
 	g_VBBytesSize = g_VerticesNumber * Polygon::StrideSize;
-	g_IBBytesSize = g_IndicesNumber * sizeof(Polygon::IndexFormat);
+	g_IBBytesSize = g_IndicesNumber * Polygon::IndexSize;
 	g_Name = L"Grid";
 }
-
-void Grid::Rotate() {}
-void Grid::Translate(DIRECTION dir, float speed) {}
-void Grid::Scale() {}
 
 #pragma endregion Grid

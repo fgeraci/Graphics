@@ -64,6 +64,7 @@
     <ClInclude Include="MathUtils.h">
       <Filter>Common</Filter>
     </ClInclude>
+    <ClInclude Include="Constants.h" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />

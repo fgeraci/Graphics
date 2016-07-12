@@ -4,6 +4,12 @@
 
 namespace Application {
 	
+	enum TRANSFORMATION_TYPE {
+		TRANSLATE,
+		ROTATE,
+		SCALE
+	};
+
 	enum DIRECTION {
 		LOCAL_FORWARD,
 		LOCAL_RIGHT,
@@ -23,10 +29,18 @@ namespace Application {
 		WORLD_STRAFE_LEFT
 	};
 
-	interface ITransformable {
-		void Translate(DIRECTION,float);
-		void Rotate();
-		void Scale();
+	class ITransformable {
+
+	public:
+
+		virtual void Transform(TRANSFORMATION_TYPE, DIRECTION, float speed = 1.0f) = 0;
+
+	protected:
+
+		virtual void UpdateWorldMatrix() = 0;
+		virtual void Translate(DIRECTION,float) = 0;
+		virtual void Rotate(DIRECTION,float) = 0;
+		virtual void Scale() = 0;
 	};
 
 }

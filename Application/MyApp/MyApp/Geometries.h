@@ -39,7 +39,9 @@ namespace Application {
 		}
 
 		static const DXGI_FORMAT IndexFormat = DXGI_FORMAT_R16_UINT;
+		static const UINT IndexSize = sizeof(uint16_t);
 		static const UINT StrideSize = sizeof(Vertex);
+		static const UINT DefaultGridSize = 50;
 
 	protected:
 
@@ -62,10 +64,6 @@ namespace Application {
 		ComPtr<ID3D12Resource> g_GPUIndexBuffer, g_CPUIndexBuffer;
 
 	public:
-
-		virtual void Translate(DIRECTION, float) abstract;
-		virtual void Rotate() abstract;
-		virtual void Scale() abstract;
 		
 		std::wstring Name() {
 			return g_Name;
@@ -173,10 +171,6 @@ namespace Application {
 
 		Cube();
 		Cube(bool d) : Cube() { g_Dynamic = d; }
-
-		void Rotate() override;
-		void Translate(DIRECTION, float) override;
-		void Scale() override;
 	};
 
 
@@ -194,14 +188,10 @@ namespace Application {
 	public:
 
 		Grid(int);
-		Grid() : Grid(25) { }
+		Grid() : Grid(DefaultGridSize) { }
 		Grid(int s, bool d) : Grid(s) { g_Dynamic = d; }
 		Grid(int s, DirectX::XMFLOAT4 c) : Grid(s) { g_Color = c; }
 		Grid(int s, bool d, DirectX::XMFLOAT4 c) : Grid(s, d) { g_Color = c; }
-
-		void Rotate() override;
-		void Translate(DIRECTION, float) override;
-		void Scale() override;
 
 	};
 }
