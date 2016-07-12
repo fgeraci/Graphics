@@ -196,6 +196,7 @@
   <ItemGroup>
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Common\d3dx12.h" />
+    <ClInclude Include="Constants.h" />
     <ClInclude Include="DirectXColors.h" />
     <ClInclude Include="DirectXHelper.h" />
     <ClInclude Include="Entity.h" />

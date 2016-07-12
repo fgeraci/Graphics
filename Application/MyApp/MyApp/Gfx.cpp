@@ -286,9 +286,9 @@ void Gfx::GetClientOutputProperties() {
 void Gfx::CheckAntialisngSupport() { 
 	D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS MSAA;
 	MSAA.Format = g_BackbufferFormat;
-	MSAA.SampleCount = 4; // at least X4 should be supported
+	MSAA.SampleCount = 8; // at least X4 should be supported
 	MSAA.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
-	MSAA.NumQualityLevels = 0;
+	MSAA.NumQualityLevels = 4;
 	ThrowIfFailed(g_Device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &MSAA, sizeof(MSAA)));
 	g_MsaaQualityLevels = MSAA.NumQualityLevels; 
 	// this is a hack, the pointer of the literal string is always true, if the first condition is false, it will print it.
@@ -451,22 +451,25 @@ ComPtr<ID3D12Resource> Gfx::CreateDefaultBuffer(UINT byteSize, const void* data,
 }
 
 void Gfx::UpdateCamera() {
+	// only update if dirty
+	if(g_MainCamera->IsDirty()) {
+		// obtain matrices
+		XMVECTOR position	= g_MainCamera->Position();
+		XMVECTOR target		= g_MainCamera->Target();
+		XMVECTOR up			= Application::m_WorldUpVector;
 	
-	// obtain matrices
-	XMVECTOR position	= g_MainCamera->Position();
-	XMVECTOR target		= g_MainCamera->Target();
-	XMVECTOR up			= g_MainCamera->Up();
-	
-	// compute projection matrix
-	XMMATRIX world = g_MainCamera->WorldMatrix();
-	XMMATRIX view = XMMatrixLookAtLH(position, target, up);
-	XMMATRIX proj = XMMatrixPerspectiveFovLH(0.25f*XM_PI, static_cast<float>(g_ClientWidth) / g_ClientHeight, 1.0f, 1000.0f);
-	XMMATRIX worldViewProj = world * view * proj;
+		// compute projection matrix
+		XMMATRIX world = g_MainCamera->WorldMatrix();
+		XMMATRIX view = XMMatrixLookAtLH(position, target, up);
+		XMMATRIX proj = XMMatrixPerspectiveFovLH(0.25f*XM_PI, static_cast<float>(g_ClientWidth) / g_ClientHeight, 1.0f, 1000.0f);
+		g_MainCamera->SetWorldViewProject(world * view * proj);
+	}
 	
 	// update buffer
 	ObjectConstantData camera;
-	XMStoreFloat4x4(&camera.WorldViewProj, XMMatrixTranspose(worldViewProj));
+	XMStoreFloat4x4(&camera.WorldViewProj, XMMatrixTranspose(g_MainCamera->WorldViewProject()));
 	g_MainCameraBuffer->WriteToBuffer(camera, 0);
+		
 }
 
 void Gfx::UpdateGrid() {

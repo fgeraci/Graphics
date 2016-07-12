@@ -3,7 +3,6 @@
 #include "pch.h"
 
 using namespace DirectX;
-using namespace Math;
 
 namespace Application {
 
@@ -12,17 +11,16 @@ namespace Application {
 	private:
 		
 		bool g_IsPrimary;
-		XMVECTOR g_Target;
+		XMMATRIX g_WorldViewProj;
+		XMMATRIX g_WorldView;
 		
 	public:
 		
-		Camera() {
-			g_Position		= XMVectorSet(0.0f, 3.0f, -10.0f, 1.0f);
-			g_Up			= XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-			g_Target		= XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
-			g_Right			= XMVectorSet(1.0, 0.0f , 0.0f , 0.0f);
-			g_Forward		= XMVector3Normalize(XMVectorSubtract(g_Target, g_Position));
-			g_WorldMatrix	= XMMatrixIdentity();
+		Camera() : Entity() {
+			g_Position			= XMVectorSet(0.0f, 3.0f, -10.0f, 1.0f);
+			XMVECTOR g_Target	= XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
+			g_Forward			= XMVector3Normalize(XMVectorSubtract(g_Target, g_Position));
+			g_Dirty				= true;
 		}
 
 		Camera(bool isPrimary) : Camera() {
@@ -34,19 +32,33 @@ namespace Application {
 			g_Position = XMLoadFloat4(&initPosition);
 		}
 
-		XMVECTOR Position() { return g_Position; }
-		XMVECTOR Target()	{ return g_Target; }
-		XMVECTOR Up()		{ return g_Up; }
-		bool IsPrimary()	{ return g_IsPrimary; }
-
-		void Translate(DIRECTION d, float f) override { 
-			// camera need to update target
-			XMVECTOR oldPos = 1 * g_Position;
-			Entity::Translate(d, f); 
-			g_Target += XMVectorSubtract(g_Position, oldPos);
+		void UpdateWorldMatrix() override {
+			Entity::UpdateWorldMatrix();
+			// Camera is always dirty for update
+			g_Dirty = true;
+			// Update also view matrix
 		}
 
-		void Rotate() override { }
-		void Scale() override { }
+		XMVECTOR Target()		{ return XMVectorAdd(g_Position, g_Forward); }
+
+		bool IsPrimary()		{ return g_IsPrimary; }
+
+		XMMATRIX WorldViewProject() {
+			return g_WorldViewProj;
+		}
+
+		void SetWorldViewProject(XMMATRIX m) {
+			g_WorldViewProj = m;
+		}
+
+		void Camera::Rotate(DIRECTION d, float speed) {
+			// intercept direction and always make it yaw world
+			if (d == LOCAL_LEFT) d = WORLD_LEFT;
+			if (d == LOCAL_RIGHT) d = WORLD_RIGHT;
+			Entity::Rotate(d,speed);
+		}
+
+
+		void Scale() override { return; }
 	};
 }
