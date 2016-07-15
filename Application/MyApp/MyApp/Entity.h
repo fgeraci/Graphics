@@ -4,6 +4,18 @@
 
 namespace Application {
 	
+	struct Vertex {
+		DirectX::XMFLOAT3 position;
+		DirectX::XMFLOAT4 color;
+	};
+
+	struct VertexTex {
+		DirectX::XMFLOAT3 position;
+		DirectX::XMFLOAT3 normal;
+		DirectX::XMFLOAT2 text1;
+		DirectX::XMFLOAT2 text2;
+	};
+
 	class Entity : public ITransformable {
 	
 	protected:
@@ -14,6 +26,24 @@ namespace Application {
 		XMVECTOR g_Position;
 		XMMATRIX g_WorldMatrix = XMMatrixIdentity();
 		bool g_Dirty = false;
+
+		std::vector<Vertex> g_Vertices;
+		std::vector<uint16_t> g_Indices;
+		std::wstring g_Name;
+		D3D12_PRIMITIVE_TOPOLOGY g_Topology;
+		bool g_Dynamic = false;							// determine buffer allocation on build
+		UINT g_VerticesNumber;
+		UINT g_IndicesNumber;
+		UINT g_VBBytesSize;
+		UINT g_IBBytesSize;
+		UINT g_StartVertexLocation = 0;
+		UINT g_StartIndexLocation = 0;
+		bool g_Enabled = true;
+		D3D12_VERTEX_BUFFER_VIEW g_VertexBufferView;
+		D3D12_INDEX_BUFFER_VIEW g_IndexBufferView;
+		ComPtr<ID3D12Resource> g_GPUVertexBuffer, g_CPUVertexBuffer;
+		ComPtr<ID3D12Resource> g_GPUIndexBuffer, g_CPUIndexBuffer;
+		std::unique_ptr<UploadBuffer<Vertex>> g_UploadBuffer = nullptr;
 
 		virtual void UpdateWorldMatrix();
 		virtual void Translate(DIRECTION, float);
@@ -29,10 +59,29 @@ namespace Application {
 		bool IsDirty() { return g_Dirty; }
 		void SetDirty(bool d) { g_Dirty = d; }
 
+		void InitializeUploadBuffer(ComPtr<ID3D12Device>);
+		void UpdateVertexBuffer();
+
 		virtual XMVECTOR Position()		{ return g_Position; }
 		virtual XMVECTOR Up()			{ return g_Up; }
 		virtual XMVECTOR Forward()		{ return g_Forward; }
 		virtual XMVECTOR Right()		{ return g_Right; }
 		virtual XMMATRIX WorldMatrix()	{ return g_WorldMatrix; }
+
+		std::wstring Name();
+		UINT VerticesNumber();
+		UINT IndicesNumber();
+		UINT VBBytesSize();
+		UINT IBBytesSize();
+		UINT StartVertexLocation();
+		UINT StartIndexLocation();
+		std::vector<Vertex> Vertices();
+		std::vector<uint16_t> Indices();
+		void SetVBView(D3D12_VERTEX_BUFFER_VIEW p);
+		void SetIBView(D3D12_INDEX_BUFFER_VIEW p);
+		D3D12_VERTEX_BUFFER_VIEW VBView();
+		D3D12_INDEX_BUFFER_VIEW IBView();
+		D3D12_PRIMITIVE_TOPOLOGY Topology();
+
 	};
 }

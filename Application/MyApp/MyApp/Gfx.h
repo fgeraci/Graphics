@@ -23,8 +23,6 @@ namespace Application {
 		XMFLOAT4X4 WorldViewProj = Math::MatrixIdentity();	// from MathUtils.h - a small helper we added
 	};
 
-	
-
 	class Gfx sealed {
 
 	public:

@@ -5,7 +5,7 @@ using namespace Application;
 
 #pragma region Cube
 
-Cube::Cube() {
+Cube::Cube(bool d) : Polygon(d) {
 	g_Vertices = {
 		{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White) },
 		{ XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT4(Colors::Black) },
@@ -55,12 +55,24 @@ Cube::Cube() {
 
 #pragma region Grid
 
-Grid::Grid(int size) {
-	/* 
-		From the origin, the grid will span half to each direction on the x-z half-plane
-		The stepping should be based on the screen width/height ratio.
+Grid::Grid() {
+	/*
+	From the origin, the grid will span half to each direction on the x-z half-plane
+	The stepping should be based on the screen width/height ratio.
 	*/
-	int start = size % 2 == 0 ? -1*(size / 2) : -1 * ((--size) / 2);	// start from the bottom left corner
+	PopulateGrid();
+	g_PolygonType = POLYGON_TYPE::GRID;
+	g_Topology = D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+	g_VerticesNumber = static_cast<UINT>(g_Vertices.size());
+	g_IndicesNumber = static_cast<UINT>(g_Indices.size());
+	g_VBBytesSize = g_VerticesNumber * Polygon::StrideSize;
+	g_IBBytesSize = g_IndicesNumber * Polygon::IndexSize;
+	g_Name = L"Grid";
+}
+
+void Grid::PopulateGrid() {
+	int size = g_Size;
+	int start = size % 2 == 0 ? -1 * (size / 2) : -1 * ((--size) / 2);	// start from the bottom left corner
 	for (int z = 0; z <= size; ++z) {
 		int indexOffset = static_cast<int>(g_Vertices.size());
 		for (int x = 0; x <= size; ++x) {
@@ -70,7 +82,7 @@ Grid::Grid(int size) {
 			// create indices
 			int combined = x + indexOffset;
 			int combinedPlus = combined + 1;
-			if(x < size) { 
+			if (x < size) {
 				g_Indices.push_back(combined);
 				g_Indices.push_back(combinedPlus);					// immediate next
 			}
@@ -80,13 +92,6 @@ Grid::Grid(int size) {
 			}
 		}
 	}
-	g_PolygonType = POLYGON_TYPE::GRID;
-	g_Topology = D3D_PRIMITIVE_TOPOLOGY_LINELIST;
-	g_VerticesNumber = static_cast<UINT>(g_Vertices.size());
-	g_IndicesNumber = static_cast<UINT>(g_Indices.size());
-	g_VBBytesSize = g_VerticesNumber * Polygon::StrideSize;
-	g_IBBytesSize = g_IndicesNumber * Polygon::IndexSize;
-	g_Name = L"Grid";
 }
 
 #pragma endregion Grid

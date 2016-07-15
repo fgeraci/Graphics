@@ -1,6 +1,5 @@
 #include "pch.h"
 
-
 using namespace Windows::UI::Core;
 using namespace Application;
 using namespace DX;
@@ -15,8 +14,8 @@ Gfx::Gfx() {
 	InitializeMainCamera();
 	InitializePipeline();
 	
-	// test
-	AddPolygon(POLYGON_TYPE::CUBE);
+	// add test polygon
+	AddPolygon(POLYGON_TYPE::CUBE, true);
 	AddPolygon(POLYGON_TYPE::GRID);
 	CloseCommandList();
 	FlushGPUCommandsQueue();
@@ -59,14 +58,21 @@ void Gfx::Draw() {
 	for (int i = 0; i < polygons; i++) {
 
 		Polygon* p = g_Polygons[i];
-		if(p->IsVisible()) {
+		
+		/* Test */
+		if (p->Name() == L"Cube") {
+			p->Transform(TRANSFORMATION_TYPE::ROTATE,DIRECTION::LOCAL_RIGHT);
+		}
+		/*     */
+
+		if(p->IsEnabled()) {
 
 			std::vector<D3D12_VERTEX_BUFFER_VIEW> vbvlist = { p->VBView() };
 			std::vector<D3D12_INDEX_BUFFER_VIEW> ibvlist = { p->IBView() };
 
 			g_CommandList->IASetVertexBuffers(
 				p->StartVertexLocation() + (static_cast<int>(vbvlist.size()) - 1),			// start assembler input slot (0-15)
-				static_cast<int>(vbvlist.size()),							// we will bind to input slots (startSlots + (numBuffers-1))
+				static_cast<int>(vbvlist.size()),											// we will bind to input slots (startSlots + (numBuffers-1))
 				vbvlist.data());
 			g_CommandList->IASetIndexBuffer(ibvlist.data());	
 			g_CommandList->IASetPrimitiveTopology(p->Topology());
@@ -407,6 +413,7 @@ ComPtr<ID3D12Resource> Gfx::CreateDefaultBuffer(UINT byteSize, const void* data,
 	
 	ComPtr<ID3D12Resource> newBuffer;
 	
+	
 	// 1. create default buffer (GPU only access)
 	// we use CD3DX12 wrapper calss which provcides utility methods for creating and describing plain common buffer reosurces
 	ThrowIfFailed(g_Device->CreateCommittedResource(
@@ -417,16 +424,19 @@ ComPtr<ID3D12Resource> Gfx::CreateDefaultBuffer(UINT byteSize, const void* data,
 		nullptr,												// resource id, none
 		IID_PPV_ARGS(newBuffer.GetAddressOf())					// out pointer
 	));
+	
 
 	// 2. create upload heap buffer (cpu initialize for then copying to GPU)
-	ThrowIfFailed(g_Device->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),		// type of heap this buffer will go to
-		D3D12_HEAP_FLAG_NONE,									
-		&CD3DX12_RESOURCE_DESC::Buffer(byteSize),				
-		D3D12_RESOURCE_STATE_GENERIC_READ,						// initial resource barrier state
-		nullptr,												
-		IID_PPV_ARGS(uploadBuffer.GetAddressOf())				
-	));
+	if (uploadBuffer == nullptr) {
+		ThrowIfFailed(g_Device->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),		// type of heap this buffer will go to
+			D3D12_HEAP_FLAG_NONE,									
+			&CD3DX12_RESOURCE_DESC::Buffer(byteSize),				
+			D3D12_RESOURCE_STATE_GENERIC_READ,						// initial resource barrier state
+			nullptr,												
+			IID_PPV_ARGS(uploadBuffer.GetAddressOf())				
+		));
+	}
 
 	// 3. Describe the data we will write to the buffers
 	D3D12_SUBRESOURCE_DATA srd = {};
@@ -461,7 +471,7 @@ void Gfx::UpdateCamera() {
 		// compute projection matrix
 		XMMATRIX world = g_MainCamera->WorldMatrix();
 		XMMATRIX view = XMMatrixLookAtLH(position, target, up);
-		XMMATRIX proj = XMMatrixPerspectiveFovLH(0.25f*XM_PI, static_cast<float>(g_ClientWidth) / g_ClientHeight, 1.0f, 1000.0f);
+		XMMATRIX proj = XMMatrixPerspectiveFovLH(0.25f*XM_PI, static_cast<float>(g_ClientWidth) / g_ClientHeight, 0.25f, m_DepthOfView);
 		g_MainCamera->SetWorldViewProject(world * view * proj);
 	}
 	
@@ -487,51 +497,53 @@ void Gfx::AddPolygon(POLYGON_TYPE type, bool dyn) {
 
 	switch (type) {
 	case CUBE:
-		p = new Cube();
+		p = new Cube(dyn);
 		break;
 	case GRID:
-		g_Grid = std::make_unique<Grid>();
+		g_Grid = std::make_unique<Grid>(dyn);
 		p = g_Grid.get();
 		break;
 	}
+	// Create the Vertices buffer
+		
+	ComPtr<ID3D12Resource> tmpVUBuffer = nullptr;
+	ComPtr<ID3D12Resource> tmpVBuffer = nullptr;
+
+	if(p->IsDynamic()) {
+		p->InitializeUploadBuffer(g_Device);
+		tmpVUBuffer = p->CPUVertexBuffer();
+		tmpVBuffer = p->CPUVertexBuffer();
+		p->UpdateVertexBuffer();
+	} else tmpVBuffer = CreateDefaultBuffer(p->VBBytesSize(), reinterpret_cast<void*>(p->Vertices().data()), tmpVUBuffer);
 	
-	if(!p->IsDynamic()) { // create an upload buffer and a gpu one, these elements will be static and wont change
+	totalVertices += p->VerticesNumber();
 
-		// Create the Vertices buffer
+	// Create the VB descriptor
+	D3D12_VERTEX_BUFFER_VIEW vbv;
+	vbv.SizeInBytes = p->VBBytesSize();							// size of the buffer
+	vbv.BufferLocation = tmpVBuffer->GetGPUVirtualAddress();	// location in GPU memory
+	vbv.StrideInBytes = Polygon::StrideSize;
+	std::vector<D3D12_VERTEX_BUFFER_VIEW> list = { vbv };
+	p->SetVBView(vbv);
+
+	// Create the Indices buffer
+	totalIndices += p->IndicesNumber();
+	ComPtr<ID3D12Resource> tmpIUBuffer = nullptr;
+	ComPtr<ID3D12Resource> tmpIBuffer = CreateDefaultBuffer(p->IBBytesSize(), reinterpret_cast<void*>(p->Indices().data()), tmpIUBuffer);
 		
-		ComPtr<ID3D12Resource> tmpVUBuffer = nullptr;
-		ComPtr<ID3D12Resource> tmpVBuffer = CreateDefaultBuffer(p->VBBytesSize(), reinterpret_cast<void*>(p->Vertices().data()), tmpVUBuffer);
-			
-		totalVertices += p->VerticesNumber();
-
-		// Create the VB descriptor
-		D3D12_VERTEX_BUFFER_VIEW vbv;
-		vbv.SizeInBytes = p->VBBytesSize();								// size of the buffer
-		vbv.BufferLocation = tmpVBuffer->GetGPUVirtualAddress();	// location in GPU memory
-		vbv.StrideInBytes = Polygon::StrideSize;
-		std::vector<D3D12_VERTEX_BUFFER_VIEW> list = { vbv };
-		p->SetVBView(vbv);
-
-		// Create the Indices buffer
-		totalIndices += p->IndicesNumber();
-		ComPtr<ID3D12Resource> tmpIUBuffer = nullptr;
-		ComPtr<ID3D12Resource> tmpIBuffer = CreateDefaultBuffer(p->IBBytesSize(), reinterpret_cast<void*>(p->Indices().data()), tmpIUBuffer);
+	// Create the IB descriptor
+	D3D12_INDEX_BUFFER_VIEW ibv;
+	ibv.Format = Polygon::IndexFormat;
+	ibv.SizeInBytes = p->IBBytesSize();
+	ibv.BufferLocation = tmpIBuffer->GetGPUVirtualAddress();
+	p->SetIBView(ibv);
 		
-		// Create the IB descriptor
-		D3D12_INDEX_BUFFER_VIEW ibv;
-		ibv.Format = Polygon::IndexFormat;
-		ibv.SizeInBytes = p->IBBytesSize();
-		ibv.BufferLocation = tmpIBuffer->GetGPUVirtualAddress();
-		p->SetIBView(ibv);
-		
-		p->SetCPUVertexBuffer(tmpVUBuffer);
-		p->SetCPUIndexBuffer(tmpIUBuffer);
-		p->SetGPUVertexBuffer(tmpVBuffer);
-		p->SetGPUIndexBuffer(tmpIBuffer);
+	p->SetCPUVertexBuffer(tmpVUBuffer);
+	p->SetCPUIndexBuffer(tmpIUBuffer);
+	p->SetGPUVertexBuffer(tmpVBuffer);
+	p->SetGPUIndexBuffer(tmpIBuffer);
 
-		tmpVUBuffer = tmpVBuffer = tmpIUBuffer = tmpIBuffer = nullptr;
-
-	}
+	tmpVUBuffer = tmpVBuffer = tmpIUBuffer = tmpIBuffer = nullptr;
 
 	// add it to the queue
 	g_Polygons.push_back(p);

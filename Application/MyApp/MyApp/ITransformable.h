@@ -37,7 +37,6 @@ namespace Application {
 
 	protected:
 
-		virtual void UpdateWorldMatrix() = 0;
 		virtual void Translate(DIRECTION,float) = 0;
 		virtual void Rotate(DIRECTION,float) = 0;
 		virtual void Scale() = 0;

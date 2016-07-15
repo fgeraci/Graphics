@@ -33,10 +33,10 @@
 	// order matters, MyApp uses Gfx
 #include "Constants.h"				// Application-wide constants
 #include "MathUtils.h"				// Matrix / Vectors math
+#include "UploadBuffer.h"			// Resources wrapper class
 #include "ITransformable.h"			// All transformable objects
 #include "Entity.h"					// All objects wrapper
 #include "Geometries.h"				// Geometry Helper - Vertices and Polygons
-#include "UploadBuffer.h"			// Resources wrapper class
 #include "Camera.h"					// Camera entity
 #include "Ticker.h"					// FPS controller
 #include "Gfx.h"					// Graphics driver - API manager

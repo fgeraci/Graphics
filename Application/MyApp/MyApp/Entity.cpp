@@ -13,6 +13,13 @@ Entity::Entity() {
 
 #pragma region Transformations
 
+void Entity::UpdateWorldMatrix() {
+	g_Right = XMVector3Normalize(g_Right);
+	g_Forward = XMVector3Normalize(g_Forward);
+	g_Up = XMVector3Normalize(XMVector3Cross(g_Forward, g_Right));
+	g_Right = XMVector3Cross(g_Up, g_Forward);
+}
+
 void Entity::Transform(TRANSFORMATION_TYPE t, DIRECTION d, float speed) {
 	switch(t) {
 	case TRANSLATE:
@@ -23,28 +30,22 @@ void Entity::Transform(TRANSFORMATION_TYPE t, DIRECTION d, float speed) {
 		break;
 	}
 	g_Dirty = false;
+	UpdateVertexBuffer();
 	UpdateWorldMatrix();
-}
-
-void Entity::UpdateWorldMatrix() {
-	g_Forward = XMVector3Normalize(g_Forward);
-	g_Up = XMVector3Normalize(XMVector3Cross(g_Forward, g_Right));
-	g_Right = XMVector3Cross(g_Up, g_Forward);
 }
 
 void Entity::Translate(DIRECTION d, float speed) {
 	// g_position += speed * forward
 	XMVECTOR delta = XMVectorReplicate(speed);
-	switch(d) {
-	case WORLD_FORWARD: case WORLD_BACKWARDS:
-		g_Position = XMVectorMultiplyAdd(delta, (d == WORLD_FORWARD ? 1.0f : -1.0f) * g_Forward, g_Position);
-		break;
-	case WORLD_STRAFE_LEFT: case WORLD_STRAFE_RIGHT:
-		g_Position = XMVectorMultiplyAdd(delta, (d == WORLD_STRAFE_RIGHT ? 1.0f : -1.0f) * g_Right, g_Position);
-		break;
+	float dir = (d == WORLD_FORWARD || d == WORLD_STRAFE_RIGHT) ? 1.0f : -1.0f;
+	XMVECTOR mainAxis;
+	if (d == WORLD_FORWARD || d == WORLD_BACKWARDS) {
+		mainAxis = g_Forward;
+	} else mainAxis = g_Right;
+	g_Position = XMVectorMultiplyAdd(delta, dir * mainAxis, g_Position);
+	for(UINT i = 0; i < g_VerticesNumber; ++i) {
+		Math::MultiplyAdd(speed, mainAxis, (g_Vertices[i].position));
 	}
-	g_Forward = XMVector3Normalize(g_Forward);
-	g_Right = XMVector3Normalize(g_Right);
 }
 
 void Entity::Rotate(DIRECTION d, float speed = 1.0f) {
@@ -63,6 +64,85 @@ void Entity::Rotate(DIRECTION d, float speed = 1.0f) {
 	g_Up = XMVector3Normalize(Math::RotateOnAxis(g_Up, axis, dir,speed));
 	g_Forward = XMVector3Normalize(Math::RotateOnAxis(g_Forward, axis, dir, speed));
 	g_Right = XMVector3Normalize(Math::RotateOnAxis(g_Right, axis, dir, speed));
+	XMFLOAT4X4 m = Math::GetRotationMatrixForAxis4(axis, speed);
+	for (UINT i = 0; i < g_VerticesNumber; ++i) {
+		Math::RotateOnAxis(g_Vertices[i].position, m, dir, speed);
+	}
 }
 
 #pragma endregion Transformations
+
+
+void Entity::InitializeUploadBuffer(ComPtr<ID3D12Device> dev) {
+	g_UploadBuffer = std::make_unique<UploadBuffer<Vertex>>(dev, g_VerticesNumber, false);
+	g_CPUVertexBuffer = g_UploadBuffer->GetResource();
+}
+
+void Entity::UpdateVertexBuffer() {
+	if(g_Dynamic) {
+		g_UploadBuffer->WriteToBuffer(g_Vertices[0], g_StartVertexLocation);
+		g_GPUVertexBuffer.Reset();
+		g_GPUVertexBuffer = g_UploadBuffer->GetResource();
+		g_VertexBufferView.BufferLocation = g_GPUVertexBuffer->GetGPUVirtualAddress();
+	}
+}
+
+#pragma region Accessors/Mutators
+
+std::wstring Entity::Name() {
+	return g_Name;
+}
+
+UINT Entity::VerticesNumber() {
+	return g_VerticesNumber;
+}
+
+UINT Entity::IndicesNumber() {
+	return g_IndicesNumber;
+}
+
+UINT Entity::VBBytesSize() {
+	return g_VBBytesSize;
+}
+
+UINT Entity::IBBytesSize() {
+	return g_IBBytesSize;
+}
+
+UINT Entity::StartVertexLocation() {
+	return g_StartVertexLocation;
+}
+
+UINT Entity::StartIndexLocation() {
+	return g_StartIndexLocation;
+}
+
+std::vector<Vertex> Entity::Vertices() {
+	return g_Vertices;
+}
+
+std::vector<uint16_t> Entity::Indices() {
+	return g_Indices;
+}
+
+void Entity::SetVBView(D3D12_VERTEX_BUFFER_VIEW p) {
+	g_VertexBufferView = p;
+}
+
+void Entity::SetIBView(D3D12_INDEX_BUFFER_VIEW p) {
+	g_IndexBufferView = p;
+}
+
+D3D12_VERTEX_BUFFER_VIEW Entity::VBView() {
+	return g_VertexBufferView;
+}
+
+D3D12_INDEX_BUFFER_VIEW Entity::IBView() {
+	return g_IndexBufferView;
+}
+
+D3D12_PRIMITIVE_TOPOLOGY Entity::Topology() {
+	return g_Topology;
+}
+
+#pragma endregion Accessors/Mutators

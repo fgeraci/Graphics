@@ -17,16 +17,15 @@ MyApp::MyApp() {
 void MyApp::Update(Ticker^ t) {
 	
 	// process keyboard input
-	ReadAsyncKeys(t->DeltaTime);
-
 	if(t->Tick()) {
+		ReadAsyncKeys();
 		// render
 		g_Graphics->Draw();
 	}
 
 }
 
-void MyApp::ReadAsyncKeys(double delta) {
+void MyApp::ReadAsyncKeys() {
 	for (int i = 0; i < g_InputMapAction.size(); ++i) {
 		if (IsKeyDown(g_InputMapAction[i])) {
 			ProcessInput((INPUT_MAP_ACTION)i, m_GlobalSpeedModifier);
@@ -67,7 +66,8 @@ void MyApp::Terminate() {
 #pragma region I/O
 
 bool MyApp::IsKeyDown(VirtualKey k) {
-	return CoreWindow::GetForCurrentThread()->GetAsyncKeyState(k) == CoreVirtualKeyStates::Down;
+	CoreVirtualKeyStates state = CoreWindow::GetForCurrentThread()->GetAsyncKeyState(k);	
+	return bool(state & CoreVirtualKeyStates::Down);
 }
 
 void MyApp::ProcessInput(INPUT_MAP_ACTION key, double delta) {

@@ -56,7 +56,7 @@ namespace Application {
 		
 		// Keyboard will be managed asynchronously from within the App
 		void ProcessInput(INPUT_MAP_ACTION, double);
-		void ReadAsyncKeys(double);
+		void ReadAsyncKeys();
 		bool IsKeyDown(VirtualKey);
 
 	public:

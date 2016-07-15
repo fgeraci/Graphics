@@ -11,28 +11,13 @@ namespace Application {
 		CUBE
 	};
 
-	struct Vertex {
-		DirectX::XMFLOAT3 position;
-		DirectX::XMFLOAT4 color;
-	};
-
-	struct VertexTex {
-		DirectX::XMFLOAT3 position;
-		DirectX::XMFLOAT3 normal;
-		DirectX::XMFLOAT2 text1;
-		DirectX::XMFLOAT2 text2;
-	};
-
-	///
-	/// Polygon is the master class of every primitive geometry for basic examples.
-	/// Each geometry derives from polygon and initialize its vertices and indices in
-	/// different ways.
-	///
-
 	class Polygon : public Entity {
 	
 	public:
 		
+		Polygon() { }
+		Polygon(bool d) { g_Dynamic = d; }
+
 		virtual ~Polygon() {
 			// release all COM references
 			g_CPUVertexBuffer = g_GPUVertexBuffer = g_CPUIndexBuffer = g_GPUIndexBuffer = nullptr;
@@ -45,92 +30,20 @@ namespace Application {
 
 	protected:
 
-		std::vector<Vertex> g_Vertices;
-		std::vector<uint16_t> g_Indices;
-		std::wstring g_Name;
-		D3D12_PRIMITIVE_TOPOLOGY g_Topology;
-		bool g_Dynamic = false;							// determine buffer allocation on build
-		UINT g_VerticesNumber;
-		UINT g_IndicesNumber;
-		UINT g_VBBytesSize;
-		UINT g_IBBytesSize;
-		UINT g_StartVertexLocation = 0;
-		UINT g_StartIndexLocation = 0;
 		POLYGON_TYPE g_PolygonType;
-		bool g_Visible = true;
-		D3D12_VERTEX_BUFFER_VIEW g_VertexBufferView;
-		D3D12_INDEX_BUFFER_VIEW g_IndexBufferView;
-		ComPtr<ID3D12Resource> g_GPUVertexBuffer, g_CPUVertexBuffer;
-		ComPtr<ID3D12Resource> g_GPUIndexBuffer, g_CPUIndexBuffer;
-
-	public:
 		
-		std::wstring Name() {
-			return g_Name;
-		}
-
-		UINT VerticesNumber() {
-			return g_VerticesNumber;
-		}
-
-		UINT IndicesNumber() {
-			return g_IndicesNumber;
-		}
-
-		UINT VBBytesSize() {
-			return g_VBBytesSize;
-		}
-
-		UINT IBBytesSize() {
-			return g_IBBytesSize;
-		}
-
-		UINT StartVertexLocation() {
-			return g_StartVertexLocation;
-		}
-
-		UINT StartIndexLocation() {
-			return g_StartIndexLocation;
-		}
-
-		std::vector<Vertex> Vertices() {
-			return g_Vertices;
-		}
-
-		std::vector<uint16_t> Indices() {
-			return g_Indices;
-		}
-
-		void SetVBView(D3D12_VERTEX_BUFFER_VIEW p) {
-			g_VertexBufferView = p;
-		}
-
-		void SetIBView(D3D12_INDEX_BUFFER_VIEW p) {
-			g_IndexBufferView = p;
-		}
-
-		D3D12_VERTEX_BUFFER_VIEW VBView() {
-			return g_VertexBufferView;
-		}
-
-		D3D12_INDEX_BUFFER_VIEW IBView() {
-			return g_IndexBufferView;
-		}
-
-		D3D12_PRIMITIVE_TOPOLOGY Topology() {
-			return g_Topology;
-		}
+	public:
 
 		POLYGON_TYPE PolygonType() {
 			return g_PolygonType;
 		}
 
-		bool IsVisible() {
-			return g_Visible;
+		bool IsEnabled() {
+			return g_Enabled;
 		}
 
 		void SetVisible(bool vis) {
-			g_Visible = vis;
+			g_Enabled = vis;
 		}
 
 
@@ -168,9 +81,8 @@ namespace Application {
 	class Cube sealed : public Polygon {
 	
 	public:
-
-		Cube();
-		Cube(bool d) : Cube() { g_Dynamic = d; }
+		Cube() : Cube(false) { }
+		Cube(bool d);
 	};
 
 
@@ -182,13 +94,15 @@ namespace Application {
 
 	private:
 		
-		
 		XMFLOAT4 g_Color = XMFLOAT4(Colors::LightGreen);
+		void PopulateGrid();
+		int g_Size = DefaultGridSize;
 
 	public:
 
-		Grid(int);
-		Grid() : Grid(DefaultGridSize) { }
+		Grid();
+		Grid(int size) : g_Size(size) { Grid(); }
+		Grid(bool d) : Grid() { g_Dynamic = d; }
 		Grid(int s, bool d) : Grid(s) { g_Dynamic = d; }
 		Grid(int s, DirectX::XMFLOAT4 c) : Grid(s) { g_Color = c; }
 		Grid(int s, bool d, DirectX::XMFLOAT4 c) : Grid(s, d) { g_Color = c; }

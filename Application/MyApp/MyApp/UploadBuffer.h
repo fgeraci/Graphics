@@ -37,7 +37,7 @@ namespace Application {
 			}
 			else g_TotalSize = g_UnitSize * elementsCount;
 
-			ThrowIfFailed(device->CreateCommittedResource(
+			DX::ThrowIfFailed(device->CreateCommittedResource(
 				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),		// type of heap this buffer will go to
 				D3D12_HEAP_FLAG_NONE,
 				&CD3DX12_RESOURCE_DESC::Buffer(g_TotalSize),
@@ -46,7 +46,7 @@ namespace Application {
 				IID_PPV_ARGS(&g_Buffer)
 			));
 
-			ThrowIfFailed(g_Buffer->Map(0, nullptr, reinterpret_cast<void**>(&g_MappedData)));
+			DX::ThrowIfFailed(g_Buffer->Map(0, nullptr, reinterpret_cast<void**>(&g_MappedData)));
 
 			// Do not write while the GPU is using it
 		}
@@ -65,7 +65,7 @@ namespace Application {
 		}
 
 		void WriteToBuffer(const T& data, UINT position) {
-			memcpy(&g_MappedData[position*g_UnitSize], &data, g_UnitSize);
+			memcpy(&g_MappedData[position*g_UnitSize], &data, g_TotalSize);
 		}
 
 	private:
