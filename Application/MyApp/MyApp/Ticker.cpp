@@ -31,7 +31,7 @@ bool Ticker::Tick() {
 			FPS = g_CurrentFPS;
 			g_GlobalDelta = g_CurrentFPS = 0;
 #if defined (_DEBUG)
-			PrintCurrentFPS();
+			// PrintCurrentFPS();
 #endif
 		}
 	}

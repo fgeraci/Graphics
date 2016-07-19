@@ -15,8 +15,8 @@ namespace Application {
 	
 	public:
 		
-		Polygon() { }
-		Polygon(bool d) { g_Dynamic = d; }
+		Polygon() { g_Drawable = true; }
+		Polygon(bool d) : Polygon() { g_Dynamic = d; }
 
 		virtual ~Polygon() {
 			// release all COM references
@@ -36,10 +36,6 @@ namespace Application {
 
 		POLYGON_TYPE PolygonType() {
 			return g_PolygonType;
-		}
-
-		bool IsEnabled() {
-			return g_Enabled;
 		}
 
 		void SetVisible(bool vis) {
@@ -81,7 +77,7 @@ namespace Application {
 	class Cube sealed : public Polygon {
 	
 	public:
-		Cube() : Cube(false) { }
+		Cube() : Cube(false) { Polygon(); }
 		Cube(bool d);
 	};
 

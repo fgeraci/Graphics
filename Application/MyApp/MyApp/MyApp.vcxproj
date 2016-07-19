@@ -200,12 +200,14 @@
     <ClInclude Include="DirectXColors.h" />
     <ClInclude Include="DirectXHelper.h" />
     <ClInclude Include="Entity.h" />
+    <ClInclude Include="FrameResources.h" />
     <ClInclude Include="Geometries.h" />
     <ClInclude Include="Gfx.h" />
     <ClInclude Include="ITransformable.h" />
     <ClInclude Include="MathUtils.h" />
     <ClInclude Include="MyApp.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Structs.h" />
     <ClInclude Include="Ticker.h" />
     <ClInclude Include="UploadBuffer.h" />
   </ItemGroup>
@@ -214,6 +216,7 @@
     <ClCompile Include="Entity.cpp" />
     <ClCompile Include="Geometries.cpp" />
     <ClCompile Include="Gfx.cpp" />
+    <ClCompile Include="MathUtils.cpp" />
     <ClCompile Include="MyApp.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

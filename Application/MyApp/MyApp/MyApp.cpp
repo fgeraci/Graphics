@@ -78,13 +78,13 @@ void MyApp::ProcessInput(INPUT_MAP_ACTION key, double delta) {
 	switch(key) {
 	case FORWARD: 
 		if(mod_sec)
-			g_SelectedEntity->Transform(TRANSFORMATION_TYPE::ROTATE, DIRECTION::WORLD_UP, m_RotationGlobalModifier);
+			g_SelectedEntity->Transform(TRANSFORMATION_TYPE::ROTATE, DIRECTION::LOCAL_UP, m_RotationGlobalModifier);
 		else
 			g_SelectedEntity->Transform(TRANSFORMATION_TYPE::TRANSLATE, DIRECTION::WORLD_FORWARD, static_cast<float>(delta));
 		break;
 	case BACKWARDS:
 		if (mod_sec)
-			g_SelectedEntity->Transform(TRANSFORMATION_TYPE::ROTATE, DIRECTION::WORLD_DOWN, m_RotationGlobalModifier);
+			g_SelectedEntity->Transform(TRANSFORMATION_TYPE::ROTATE, DIRECTION::LOCAL_DOWN, m_RotationGlobalModifier);
 		else
 			g_SelectedEntity->Transform(TRANSFORMATION_TYPE::TRANSLATE, DIRECTION::WORLD_BACKWARDS, static_cast<float>(delta));
 		break;
@@ -95,10 +95,10 @@ void MyApp::ProcessInput(INPUT_MAP_ACTION key, double delta) {
 		g_SelectedEntity->Transform(TRANSFORMATION_TYPE::TRANSLATE, DIRECTION::WORLD_STRAFE_RIGHT, static_cast<float>(delta));
 		break;
 	case LEFT:
-		g_SelectedEntity->Transform(TRANSFORMATION_TYPE::ROTATE, mod ? DIRECTION::WORLD_LEFT : DIRECTION::LOCAL_LEFT, m_RotationGlobalModifier);
+		g_SelectedEntity->Transform(TRANSFORMATION_TYPE::ROTATE, DIRECTION::WORLD_LEFT, m_RotationGlobalModifier);
 		break;
 	case RIGHT:
-		g_SelectedEntity->Transform(TRANSFORMATION_TYPE::ROTATE, mod ? DIRECTION::WORLD_RIGHT : DIRECTION::LOCAL_RIGHT, m_RotationGlobalModifier);
+		g_SelectedEntity->Transform(TRANSFORMATION_TYPE::ROTATE, DIRECTION::WORLD_RIGHT, m_RotationGlobalModifier);
 		break;
 	}
 }
@@ -120,7 +120,7 @@ void MyApp::ProcessPointer(Point p, VirtualKey k, POINT_EVENT_TYPE t, int wheel)
 			g_SelectedEntity->Transform(TRANSFORMATION_TYPE::ROTATE, 
 				(m_PointerInvert*x) > 0 ? DIRECTION::WORLD_LEFT : DIRECTION::WORLD_RIGHT, m_PointerSens*abs(x));
 			g_SelectedEntity->Transform(TRANSFORMATION_TYPE::ROTATE, 
-				(m_PointerInvert*y) < 0 ? DIRECTION::WORLD_DOWN : DIRECTION::WORLD_UP, m_PointerSens*abs(y));
+				(m_PointerInvert*y) < 0 ? DIRECTION::LOCAL_DOWN : DIRECTION::LOCAL_UP, m_PointerSens*abs(y));
 		}
 		break;
 	case POINT_EVENT_TYPE::WHEEL:

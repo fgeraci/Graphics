@@ -41,6 +41,9 @@
     <ClCompile Include="Ticker.cpp" />
     <ClCompile Include="Geometries.cpp" />
     <ClCompile Include="Entity.cpp" />
+    <ClCompile Include="MathUtils.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -65,6 +68,8 @@
       <Filter>Common</Filter>
     </ClInclude>
     <ClInclude Include="Constants.h" />
+    <ClInclude Include="FrameResources.h" />
+    <ClInclude Include="Structs.h" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />

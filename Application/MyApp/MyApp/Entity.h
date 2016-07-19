@@ -3,18 +3,6 @@
 #include "pch.h"
 
 namespace Application {
-	
-	struct Vertex {
-		DirectX::XMFLOAT3 position;
-		DirectX::XMFLOAT4 color;
-	};
-
-	struct VertexTex {
-		DirectX::XMFLOAT3 position;
-		DirectX::XMFLOAT3 normal;
-		DirectX::XMFLOAT2 text1;
-		DirectX::XMFLOAT2 text2;
-	};
 
 	class Entity : public ITransformable {
 	
@@ -28,6 +16,7 @@ namespace Application {
 		bool g_Dirty = false;
 
 		std::vector<Vertex> g_Vertices;
+		std::vector<Vertex> g_LocalVertices;
 		std::vector<uint16_t> g_Indices;
 		std::wstring g_Name;
 		D3D12_PRIMITIVE_TOPOLOGY g_Topology;
@@ -39,6 +28,7 @@ namespace Application {
 		UINT g_StartVertexLocation = 0;
 		UINT g_StartIndexLocation = 0;
 		bool g_Enabled = true;
+		bool g_Drawable = false;
 		D3D12_VERTEX_BUFFER_VIEW g_VertexBufferView;
 		D3D12_INDEX_BUFFER_VIEW g_IndexBufferView;
 		ComPtr<ID3D12Resource> g_GPUVertexBuffer, g_CPUVertexBuffer;
@@ -59,8 +49,8 @@ namespace Application {
 		bool IsDirty() { return g_Dirty; }
 		void SetDirty(bool d) { g_Dirty = d; }
 
-		void InitializeUploadBuffer(ComPtr<ID3D12Device>);
-		void UpdateVertexBuffer();
+		virtual void InitializeUploadBuffer(ComPtr<ID3D12Device>);
+		virtual void UpdateVertexBuffer();
 
 		virtual XMVECTOR Position()		{ return g_Position; }
 		virtual XMVECTOR Up()			{ return g_Up; }
@@ -70,6 +60,8 @@ namespace Application {
 
 		std::wstring Name();
 		UINT VerticesNumber();
+		bool IsEnabled();
+		bool IsDrawable();
 		UINT IndicesNumber();
 		UINT VBBytesSize();
 		UINT IBBytesSize();

@@ -19,10 +19,6 @@ using namespace DirectX;
 
 namespace Application {
 
-	struct ObjectConstantData {
-		XMFLOAT4X4 WorldViewProj = Math::MatrixIdentity();	// from MathUtils.h - a small helper we added
-	};
-
 	class Gfx sealed {
 
 	public:
@@ -66,10 +62,16 @@ namespace Application {
 		std::unique_ptr<Grid> g_Grid = nullptr;
 
 		// Buffers
-		std::unique_ptr<UploadBuffer<ObjectConstantData>> g_MainCameraBuffer = nullptr;
+		UploadBuffer<ObjectConstantData>* g_MainCameraBuffer = nullptr;
 
 		// D3D Resources
-		std::vector<Polygon*> g_Polygons;
+			// Fresources will be updated once per draw call and pushed to the CPU. The CPU will be blocked from continuing
+			// if the GPU hasn't caught up with it, ideally, GPU utilization has to be maxed out, while CPU can idle.
+			// The more FrameResources we have, the further ahead the CPU can process frames and submit CmdAllocators to it.
+		std::vector<FrameResources> g_FrameResources;
+		int g_CurrentFrameResources = -1;
+
+		// std::vector<Polygon*> g_Polygons;
 		ComPtr<ID3D12Resource> g_CPUVertexBuffer = nullptr;
 		ComPtr<ID3D12Resource> g_CPUIndexBuffer = nullptr;
 		ComPtr<ID3D12Resource> g_GPUVertexBuffer = nullptr;
@@ -102,8 +104,8 @@ namespace Application {
 		// For Draw Calls
 		void UpdateCamera();
 		void UpdateGrid();
-		void AddPolygon(POLYGON_TYPE);
-		void AddPolygon(POLYGON_TYPE, bool dyn);
+		Entity* AddPolygon(POLYGON_TYPE);
+		Entity* AddPolygon(POLYGON_TYPE, bool dyn);
 
 		// Native properties
 		UINT g_MsaaQualityLevels;
@@ -130,7 +132,7 @@ namespace Application {
 		void CloseCommandList();
 		void CreateSwapChain();
 		void CreateInputLayout();
-		void CreateConstantBuffers();
+		void CreateCameraConstantBuffers();
 		void CreateRootSignature();
 		void CreatePSO(D3D12_PRIMITIVE_TOPOLOGY_TYPE, ComPtr<ID3D12PipelineState>&);
 			// creates a generic buffer - ID3DResource for index and vertex buffers

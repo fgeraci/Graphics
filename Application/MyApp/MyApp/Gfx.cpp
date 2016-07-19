@@ -13,9 +13,15 @@ Gfx::Gfx() {
 	InitializeDirect3D();
 	InitializeMainCamera();
 	InitializePipeline();
-	
+
 	// add test polygon
-	AddPolygon(POLYGON_TYPE::CUBE, true);
+	Entity* p = AddPolygon(POLYGON_TYPE::CUBE, true);
+	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, DIRECTION::WORLD_RIGHT, 5.0f);
+	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, DIRECTION::WORLD_UP);
+	p = AddPolygon(POLYGON_TYPE::CUBE, true);
+	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, DIRECTION::WORLD_LEFT, 5.0f);
+	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, DIRECTION::WORLD_UP);
+	// adding grid
 	AddPolygon(POLYGON_TYPE::GRID);
 	CloseCommandList();
 	FlushGPUCommandsQueue();
@@ -28,10 +34,24 @@ Gfx::Gfx() {
 
 void Gfx::Draw() {
 
-	ThrowIfFailed(g_CommandAllocator->Reset());
+	/* Handle current FrameResources */
+	g_CurrentFrameResources = (g_CurrentFrameResources + 1) % g_FrameResources.size();
+	FrameResources fr = g_FrameResources[g_CurrentFrameResources];
+	ComPtr<ID3D12CommandAllocator> curAllocator = fr.CommandAllocator();
+	g_CurrentFence = g_Fence->GetCompletedValue();
+	if(fr.Fence() != 0 && g_CurrentFence < fr.Fence()) {
+		fr.UpdateFence(++g_CurrentFence);
+		HANDLE signalHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
+		ThrowIfFailed(g_Fence->SetEventOnCompletion(fr.Fence(), signalHandle));
+		WaitForSingleObject(signalHandle, INFINITE);
+		CloseHandle(signalHandle);
+	}
+	fr.UpdateFence(++g_CurrentFence);
+	// proceeed when freed
+	ThrowIfFailed(curAllocator->Reset());
 
 	// We can define in this call which pipeline state to use
-	ThrowIfFailed(g_CommandList->Reset(g_CommandAllocator.Get(), g_PipelineStateTriangle.Get()));
+	ThrowIfFailed(g_CommandList->Reset(curAllocator.Get(), g_PipelineStateTriangle.Get()));
 
 	g_CommandList->RSSetViewports(1, &g_ViewPort);
 	g_CommandList->RSSetScissorRects(1, &g_ScissorsRectangle);
@@ -41,54 +61,43 @@ void Gfx::Draw() {
 	g_CommandList->ClearRenderTargetView(GetCurrentRtv(), g_BackBufferColor, 0, nullptr);
 	g_CommandList->ClearDepthStencilView(GetDsv(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 	g_CommandList->OMSetRenderTargets(1, &GetCurrentRtv(), true, &GetDsv());
+	
 	/*   Send drawing commands here	*/
 	
+	// Update view every frame
 	UpdateCamera();
-	UpdateGrid();
 
-	ComPtr<ID3D12DescriptorHeap> descHeaps[] = { g_CbvDescHeap.Get() };
-	g_CommandList->SetDescriptorHeaps(_countof(descHeaps), descHeaps->GetAddressOf());
+	// Update only current FrameResources
+	fr.Update(g_CommandList);
 	
-	g_CommandList->SetGraphicsRootSignature(g_RootSignature.Get());
+	// Draw all of them
+	int allEntities = static_cast<int>(g_FrameResources.size());
+	for(int i = 0; i < allEntities; ++i) {
+		Entity* e = g_FrameResources[i].Entity();
+		if(e) {
+			if (e->IsEnabled() && e->IsDrawable()) {
 
-	/* Ideally same type geometries should be chained in a list for common buffers - TODO */
-	
-	int polygons = static_cast<int>(g_Polygons.size());
+				std::vector<D3D12_VERTEX_BUFFER_VIEW> vbvlist = { e->VBView() };
+				std::vector<D3D12_INDEX_BUFFER_VIEW> ibvlist = { e->IBView() };
 
-	for (int i = 0; i < polygons; i++) {
+				g_CommandList->IASetVertexBuffers(
+					e->StartVertexLocation() + (static_cast<int>(vbvlist.size()) - 1),			// start assembler input slot (0-15)
+					static_cast<int>(vbvlist.size()),											// we will bind to input slots (startSlots + (numBuffers-1))
+					vbvlist.data());
+				g_CommandList->IASetIndexBuffer(ibvlist.data());
+				g_CommandList->IASetPrimitiveTopology(e->Topology());
 
-		Polygon* p = g_Polygons[i];
-		
-		/* Test */
-		if (p->Name() == L"Cube") {
-			p->Transform(TRANSFORMATION_TYPE::ROTATE,DIRECTION::LOCAL_RIGHT);
-		}
-		/*     */
+				// select the proper pilepile based on the required properties- this is NOT ideal per draw call, but will do for now.
+				g_CommandList->SetPipelineState(
+					e->Topology() == D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE ? g_PipelineStateLine.Get() : g_PipelineStateTriangle.Get());
 
-		if(p->IsEnabled()) {
-
-			std::vector<D3D12_VERTEX_BUFFER_VIEW> vbvlist = { p->VBView() };
-			std::vector<D3D12_INDEX_BUFFER_VIEW> ibvlist = { p->IBView() };
-
-			g_CommandList->IASetVertexBuffers(
-				p->StartVertexLocation() + (static_cast<int>(vbvlist.size()) - 1),			// start assembler input slot (0-15)
-				static_cast<int>(vbvlist.size()),											// we will bind to input slots (startSlots + (numBuffers-1))
-				vbvlist.data());
-			g_CommandList->IASetIndexBuffer(ibvlist.data());	
-			g_CommandList->IASetPrimitiveTopology(p->Topology());
-
-			// select the proper pilepile based on the required properties- this is NOT ideal per draw call, but will do for now.
-			g_CommandList->SetPipelineState(
-				p->Topology() == D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE ? g_PipelineStateLine.Get() : g_PipelineStateTriangle.Get());
-			
-			CD3DX12_GPU_DESCRIPTOR_HANDLE cbvDescHandle(g_CbvDescHeap->GetGPUDescriptorHandleForHeapStart());
-			g_CommandList->SetGraphicsRootDescriptorTable(0, cbvDescHandle);
-
-			g_CommandList->DrawIndexedInstanced(p->IndicesNumber(), 1, 0, 0, 0);
+				g_CommandList->DrawIndexedInstanced(e->IndicesNumber(), 1, 0, 0, 0);
+			}
 		}
 	}
 
 	/*   End of drawwing commands	*/
+
 	g_CommandList->ResourceBarrier(1,
 		&CD3DX12_RESOURCE_BARRIER::Transition(
 			GetCurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
@@ -98,7 +107,8 @@ void Gfx::Draw() {
 	ThrowIfFailed(g_SwapChain->Present(0, 0));
 	g_CurrentBackbuffer = (g_CurrentBackbuffer + 1) % g_SwapChainBuffersCount;
 
-	FlushGPUCommandsQueue();
+	g_CommandQueue->Signal(g_Fence.Get(), fr.Fence());
+
 }
 
 #pragma endregion Draw
@@ -185,8 +195,8 @@ void Gfx::InitializeDirect3D() {
 
 void Gfx::InitializeMainCamera() {
 	g_MainCamera = std::make_unique<Camera>(true, g_MainCameraInitialPosition);
-	g_MainCameraBuffer = std::make_unique<UploadBuffer<ObjectConstantData>>(g_Device, 1, true);
-	UpdateCamera();
+	g_MainCamera->InitializeUploadBuffer(g_Device);
+	g_MainCameraBuffer = g_MainCamera->GetUploadBuffer();
 }
 
 #pragma endregion Initialization
@@ -461,36 +471,43 @@ ComPtr<ID3D12Resource> Gfx::CreateDefaultBuffer(UINT byteSize, const void* data,
 }
 
 void Gfx::UpdateCamera() {
-	// only update if dirty
-	if(g_MainCamera->IsDirty()) {
+
+	// update camera entity's state
+	if (g_MainCamera->IsDirty()) {
 		// obtain matrices
-		XMVECTOR position	= g_MainCamera->Position();
-		XMVECTOR target		= g_MainCamera->Target();
-		XMVECTOR up			= Application::m_WorldUpVector;
-	
+		XMVECTOR position = g_MainCamera->Position();
+		XMVECTOR target = g_MainCamera->Target();
+		XMVECTOR up = Application::m_WorldUpVector;
+
 		// compute projection matrix
 		XMMATRIX world = g_MainCamera->WorldMatrix();
 		XMMATRIX view = XMMatrixLookAtLH(position, target, up);
 		XMMATRIX proj = XMMatrixPerspectiveFovLH(0.25f*XM_PI, static_cast<float>(g_ClientWidth) / g_ClientHeight, 0.25f, m_DepthOfView);
 		g_MainCamera->SetWorldViewProject(world * view * proj);
 	}
-	
-	// update buffer
+
+	// update CBV buffer
 	ObjectConstantData camera;
 	XMStoreFloat4x4(&camera.WorldViewProj, XMMatrixTranspose(g_MainCamera->WorldViewProject()));
-	g_MainCameraBuffer->WriteToBuffer(camera, 0);
-		
+	g_MainCamera->GetUploadBuffer()->WriteToBuffer(camera, 0);
+
+	ComPtr<ID3D12DescriptorHeap> descHeaps[] = { g_CbvDescHeap.Get() };
+	g_CommandList->SetDescriptorHeaps(_countof(descHeaps), descHeaps->GetAddressOf());
+	g_CommandList->SetGraphicsRootSignature(g_RootSignature.Get());
+
+	CD3DX12_GPU_DESCRIPTOR_HANDLE cbvDescHandle(g_CbvDescHeap->GetGPUDescriptorHandleForHeapStart());
+	g_CommandList->SetGraphicsRootDescriptorTable(0, cbvDescHandle);
 }
 
 void Gfx::UpdateGrid() {
 	// if the grid is dynamic, update here - TODO
 }
 
-void Gfx::AddPolygon(POLYGON_TYPE type) {
-	AddPolygon(type, false);
+Entity* Gfx::AddPolygon(POLYGON_TYPE type) {
+	return AddPolygon(type, false);
 }
 
-void Gfx::AddPolygon(POLYGON_TYPE type, bool dyn) {
+Entity* Gfx::AddPolygon(POLYGON_TYPE type, bool dyn) {
 	
 	Polygon *p = nullptr;
 	UINT totalVertices = 0, totalIndices = 0;
@@ -546,7 +563,11 @@ void Gfx::AddPolygon(POLYGON_TYPE type, bool dyn) {
 	tmpVUBuffer = tmpVBuffer = tmpIUBuffer = tmpIBuffer = nullptr;
 
 	// add it to the queue
-	g_Polygons.push_back(p);
+	g_CurrentFence = g_Fence->GetCompletedValue();
+	FrameResources fr(g_Device, g_CurrentFence, p);
+	g_FrameResources.push_back(fr);
+
+	return p;
 }
 
 ComPtr<ID3DBlob> Gfx::LoadFileBlob(const std::wstring& fileName) {
@@ -582,7 +603,7 @@ void Gfx::CreateInputLayout() {
 	};
 }
 
-void Gfx::CreateConstantBuffers() {
+void Gfx::CreateCameraConstantBuffers() {
 	LOGMESSAGE(L"\t\tCreate the main camera constant buffer\n");
 	// this address needs to be offset if we want to point forward in the heap
 	UINT offset = 0;
@@ -740,8 +761,8 @@ void Gfx::InitializePipeline() {
 	LOGMESSAGE(L"\tDescribing Vertices\n");
 	CreateInputLayout();
 
-	LOGMESSAGE(L"\tCreate the main camera's and other constant buffer\n");
-	CreateConstantBuffers();
+	LOGMESSAGE(L"\tCreate main camera buffers\n");
+	CreateCameraConstantBuffers();
 
 	LOGMESSAGE(L"\tCreate the Root Signature\n");
 	CreateRootSignature();

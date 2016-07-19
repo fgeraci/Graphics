@@ -42,6 +42,7 @@ Cube::Cube(bool d) : Polygon(d) {
 		4, 0, 3,
 		4, 3, 7
 	};
+	g_LocalVertices = g_Vertices;
 	g_PolygonType = POLYGON_TYPE::CUBE;
 	g_Topology = D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	g_VerticesNumber = static_cast<UINT>(g_Vertices.size());
@@ -55,12 +56,13 @@ Cube::Cube(bool d) : Polygon(d) {
 
 #pragma region Grid
 
-Grid::Grid() {
+Grid::Grid() : Polygon() {
 	/*
 	From the origin, the grid will span half to each direction on the x-z half-plane
 	The stepping should be based on the screen width/height ratio.
 	*/
 	PopulateGrid();
+	g_LocalVertices = g_Vertices;
 	g_PolygonType = POLYGON_TYPE::GRID;
 	g_Topology = D3D_PRIMITIVE_TOPOLOGY_LINELIST;
 	g_VerticesNumber = static_cast<UINT>(g_Vertices.size());

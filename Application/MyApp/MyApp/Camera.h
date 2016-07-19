@@ -3,6 +3,7 @@
 #include "pch.h"
 
 using namespace DirectX;
+using namespace Application::Math;
 
 namespace Application {
 
@@ -10,6 +11,7 @@ namespace Application {
 	
 	private:
 		
+		std::unique_ptr<UploadBuffer<ObjectConstantData>> g_UploadBuffer = nullptr;
 		bool g_IsPrimary;
 		XMMATRIX g_WorldViewProj;
 		XMMATRIX g_WorldView;
@@ -32,6 +34,15 @@ namespace Application {
 			g_Position = XMLoadFloat4(&initPosition);
 		}
 
+		void InitializeUploadBuffer(ComPtr<ID3D12Device> dev) override {
+			g_UploadBuffer = std::make_unique<UploadBuffer<ObjectConstantData>>(dev, 1, true);
+			g_CPUVertexBuffer = g_UploadBuffer->GetResource();
+		}
+
+		UploadBuffer<ObjectConstantData>* GetUploadBuffer() {
+			return g_UploadBuffer.get();
+		}
+
 		void UpdateWorldMatrix() override {
 			Entity::UpdateWorldMatrix();
 			// Camera is always dirty for update
@@ -52,10 +63,26 @@ namespace Application {
 		}
 
 		void Camera::Rotate(DIRECTION d, float speed) {
-			// intercept direction and always make it yaw world
-			if (d == LOCAL_LEFT) d = WORLD_LEFT;
-			if (d == LOCAL_RIGHT) d = WORLD_RIGHT;
-			Entity::Rotate(d,speed);
+			
+			// this function pointer will get the proper call
+			float dir = m_LeftScreenSide;
+			switch (d) {
+			case WORLD_LEFT: case LOCAL_UP:
+				dir = m_RightScreenSide;
+			}
+			XMVECTOR axis;
+			switch (d) {
+			case WORLD_RIGHT: case WORLD_LEFT:
+				axis = m_WorldUpVector;
+				break;
+			case LOCAL_UP: case LOCAL_DOWN:
+				axis = g_Right;
+			}
+			// for the camera, only deal with its local axes
+			XMMATRIX r = (dir == 1) ? Math::GetRotationMatrixForAxisWeighted(axis,speed) : XMMatrixTranspose(Math::GetRotationMatrixForAxisWeighted(axis,speed));
+			g_Up = XMVector3Normalize(XMVector4Transform(g_Up, r));
+			g_Forward = XMVector3Normalize(XMVector4Transform(g_Forward, r));
+			g_Right = XMVector3Normalize(XMVector4Transform(g_Right, r));
 		}
 
 

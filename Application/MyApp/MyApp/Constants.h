@@ -21,7 +21,7 @@ namespace Application {
 	const static int		m_UpScreenSide		= -1;
 	const static int		m_DownScreenSide	=  1;
 	const static int		m_PointerInvert		=  1;		// 1 --> false
-	const static float		m_PointerSens		=  0.15f;
+	const static float		m_PointerSens		=  0.06f;
 	const static float		m_DepthOfView		=  1000.0f;
 
 	// Graphics		- Gfx
