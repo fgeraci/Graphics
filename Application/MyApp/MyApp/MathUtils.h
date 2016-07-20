@@ -22,6 +22,9 @@ namespace Application {
 
 		/* FLOATx methods */
 
+		// XMFLOAT3 addition
+		XMFLOAT3 AddVectors3(XMFLOAT3,XMFLOAT3);
+
 		XMFLOAT4X4 MatrixIdentity();
 
 		XMFLOAT4 VectorAdd(const XMFLOAT4& v1, const XMFLOAT4& v2);

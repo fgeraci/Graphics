@@ -37,6 +37,9 @@ namespace Application {
 			g_ClientHeight = h;
 		}
 
+		Entity* AddPolygon(POLYGON_TYPE);
+		Entity* AddPolygon(POLYGON_TYPE, bool dyn);
+
 		// Accessors / Mutators
 		Entity* MainCamera();
 
@@ -60,6 +63,7 @@ namespace Application {
 		// Main Scene Objects
 		std::unique_ptr<Camera> g_MainCamera = nullptr;
 		std::unique_ptr<Grid> g_Grid = nullptr;
+		std::unique_ptr<Entity> g_WorldEntity = nullptr;
 
 		// Buffers
 		UploadBuffer<ObjectConstantData>* g_MainCameraBuffer = nullptr;
@@ -104,9 +108,7 @@ namespace Application {
 		// For Draw Calls
 		void UpdateCamera();
 		void UpdateGrid();
-		Entity* AddPolygon(POLYGON_TYPE);
-		Entity* AddPolygon(POLYGON_TYPE, bool dyn);
-
+		
 		// Native properties
 		UINT g_MsaaQualityLevels;
 		UINT g_RtvDescriptorSize, g_DsvDescriptorSize, g_SrvDescriptorSize;

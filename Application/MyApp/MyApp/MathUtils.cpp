@@ -14,6 +14,10 @@ float sinOneDegPos = sin(oneDeg);
 
 /* XM methods */
 
+XMFLOAT3 Application::Math::AddVectors3(XMFLOAT3 v1, XMFLOAT3 v2) {
+	return XMFLOAT3(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z);
+}
+
 XMMATRIX Application::Math::GetRotationMatrixForAxis(XMVECTOR v) {
 	float x = XMVectorGetX(v), y = XMVectorGetY(v), z = XMVectorGetZ(v);
 	float t = (1 - cosOneDegPos), c = cosOneDegPos, s = sinOneDegPos;

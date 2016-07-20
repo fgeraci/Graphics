@@ -200,6 +200,7 @@
     <ClInclude Include="DirectXColors.h" />
     <ClInclude Include="DirectXHelper.h" />
     <ClInclude Include="Entity.h" />
+    <ClInclude Include="Enums.h" />
     <ClInclude Include="FrameResources.h" />
     <ClInclude Include="Geometries.h" />
     <ClInclude Include="Gfx.h" />
@@ -210,6 +211,7 @@
     <ClInclude Include="Structs.h" />
     <ClInclude Include="Ticker.h" />
     <ClInclude Include="UploadBuffer.h" />
+    <ClInclude Include="WorldEntity.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp" />

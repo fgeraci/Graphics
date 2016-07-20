@@ -70,6 +70,8 @@
     <ClInclude Include="Constants.h" />
     <ClInclude Include="FrameResources.h" />
     <ClInclude Include="Structs.h" />
+    <ClInclude Include="Enums.h" />
+    <ClInclude Include="WorldEntity.h" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />

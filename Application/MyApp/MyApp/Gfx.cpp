@@ -3,6 +3,7 @@
 using namespace Windows::UI::Core;
 using namespace Application;
 using namespace DX;
+using namespace Application::Enums::Transformation;
 
 #pragma region Constructor
 
@@ -14,13 +15,8 @@ Gfx::Gfx() {
 	InitializeMainCamera();
 	InitializePipeline();
 
-	// add test polygon
-	Entity* p = AddPolygon(POLYGON_TYPE::CUBE, true);
-	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, DIRECTION::WORLD_RIGHT, 5.0f);
-	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, DIRECTION::WORLD_UP);
-	p = AddPolygon(POLYGON_TYPE::CUBE, true);
-	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, DIRECTION::WORLD_LEFT, 5.0f);
-	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, DIRECTION::WORLD_UP);
+	g_WorldEntity = std::make_unique<WorldEntity>();
+
 	// adding grid
 	AddPolygon(POLYGON_TYPE::GRID);
 	CloseCommandList();
@@ -34,19 +30,26 @@ Gfx::Gfx() {
 
 void Gfx::Draw() {
 
-	/* Handle current FrameResources */
-	g_CurrentFrameResources = (g_CurrentFrameResources + 1) % g_FrameResources.size();
-	FrameResources fr = g_FrameResources[g_CurrentFrameResources];
-	ComPtr<ID3D12CommandAllocator> curAllocator = fr.CommandAllocator();
-	g_CurrentFence = g_Fence->GetCompletedValue();
-	if(fr.Fence() != 0 && g_CurrentFence < fr.Fence()) {
-		fr.UpdateFence(++g_CurrentFence);
-		HANDLE signalHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
-		ThrowIfFailed(g_Fence->SetEventOnCompletion(fr.Fence(), signalHandle));
-		WaitForSingleObject(signalHandle, INFINITE);
-		CloseHandle(signalHandle);
+	ComPtr<ID3D12CommandAllocator> curAllocator;
+	FrameResources* fr = nullptr;
+	if(g_FrameResources.size() > 0) {
+		/* Handle current FrameResources */
+		g_CurrentFrameResources = (g_CurrentFrameResources + 1) % g_FrameResources.size();
+		fr = &g_FrameResources[g_CurrentFrameResources];
+		curAllocator = fr->CommandAllocator();
+		g_CurrentFence = g_Fence->GetCompletedValue();
+		if(g_CurrentFence < fr->Fence()) {
+			HANDLE signalHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
+			ThrowIfFailed(g_Fence->SetEventOnCompletion(fr->Fence(), signalHandle));
+			WaitForSingleObject(signalHandle, INFINITE);
+			CloseHandle(signalHandle);
+		}
+		g_CurrentFence = g_Fence->GetCompletedValue() + 1;
+		fr->UpdateFence(g_CurrentFence);
+	} else {
+		curAllocator = g_CommandAllocator;
 	}
-	fr.UpdateFence(++g_CurrentFence);
+
 	// proceeed when freed
 	ThrowIfFailed(curAllocator->Reset());
 
@@ -68,7 +71,8 @@ void Gfx::Draw() {
 	UpdateCamera();
 
 	// Update only current FrameResources
-	fr.Update(g_CommandList);
+	if(fr) 
+		fr->Update(g_CommandList);
 	
 	// Draw all of them
 	int allEntities = static_cast<int>(g_FrameResources.size());
@@ -107,7 +111,7 @@ void Gfx::Draw() {
 	ThrowIfFailed(g_SwapChain->Present(0, 0));
 	g_CurrentBackbuffer = (g_CurrentBackbuffer + 1) % g_SwapChainBuffersCount;
 
-	g_CommandQueue->Signal(g_Fence.Get(), fr.Fence());
+	g_CommandQueue->Signal(g_Fence.Get(), g_CurrentFence);
 
 }
 

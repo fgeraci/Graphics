@@ -4,11 +4,13 @@
 
 using namespace Application;
 
+double Ticker::DeltaTime = 0.0;
+
 Ticker::Ticker(int fps) {
 	if (!fps) {
 		throw Platform::Exception::CreateException(-1, "Invalid FPS parameter");
 	}
-	Paused = false;
+	g_Paused = false;
 	g_FPS = fps;
 	g_CurrentFPS = 0;
 	QueryPerformanceFrequency((LARGE_INTEGER*)&g_Cps);
@@ -18,17 +20,16 @@ Ticker::Ticker(int fps) {
 }
 
 bool Ticker::Tick() {
-	__int64 n = Now;
+	__int64 n = Now();
 	__int64 delta = 0;
 	delta = n - g_LastUpdate;
-	bool tick = (delta > g_TargetTime) && !Paused;
+	bool tick = (delta > g_TargetTime) && !g_Paused;
 	g_GlobalDelta += n - g_LastTickAttempt;
 	if (tick) {
 		g_CurrentFPS++;
 		g_LastUpdate = n;
-		g_DeltaTime = delta * (1.0 / g_Cps);	// in seconds, when was the last frame update
+		Ticker::DeltaTime = delta * (1.0 / g_Cps);	// in seconds, when was the last frame update
 		if (g_GlobalDelta > g_Cps) {
-			FPS = g_CurrentFPS;
 			g_GlobalDelta = g_CurrentFPS = 0;
 #if defined (_DEBUG)
 			// PrintCurrentFPS();
@@ -42,7 +43,7 @@ bool Ticker::Tick() {
 void Ticker::PrintCurrentFPS() {
 	std::wstring s;
 	s += L"Current FPS: ";
-	s += std::to_wstring(FPS);
+	s += std::to_wstring(FPS());
 	s += L"\n";
 	LPCWSTR a = s.c_str();
 	LOGMESSAGE(a);

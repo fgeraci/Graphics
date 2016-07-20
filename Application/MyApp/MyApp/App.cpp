@@ -26,29 +26,27 @@
 	};
 */
 
-// Add required namespaces to simplify code - manually
 using namespace Windows::ApplicationModel;
 using namespace Windows::ApplicationModel::Core;
 using namespace Windows::ApplicationModel::Activation;
 using namespace Windows::UI::Core;
 using namespace Windows::UI::Popups;
-using namespace Windows::System;
 using namespace Windows::Foundation;
-using namespace Windows::Graphics::Display;
-using namespace Platform;
+
 using namespace Application;
+using namespace Application::Enums::Input;
 
 ref class App sealed : public IFrameworkView {
 
 private:
 
-	Ticker^ g_Ticker;
+	Ticker* g_Ticker;
 	MyApp* g_MainApplication;
 	bool g_PointerPressed = false;
 
 	/* Utility */
 
-	void SendPointerEvent(CoreWindow^ wnd, PointerEventArgs^ args, Application::POINT_EVENT_TYPE t) {
+	void SendPointerEvent(CoreWindow^ wnd, PointerEventArgs^ args, POINT_EVENT_TYPE t) {
 		VirtualKey k;
 		if (args->CurrentPoint->Properties->IsRightButtonPressed) {
 			k = VirtualKey::RightButton;
@@ -123,7 +121,7 @@ public:
 	virtual void Load(Platform::String ^entryPoint) { 
 		try {
 			g_MainApplication = new MyApp();
-			g_Ticker = ref new Ticker(Application::m_GlobalFPS);
+			g_Ticker = new Ticker(Application::m_GlobalFPS);
 		} catch (Exception^ e) {
 			MessageDialog(e->Message);
 		}
@@ -178,12 +176,12 @@ public:
 
 	void OnPointerMoved(CoreWindow^ wnd, PointerEventArgs^ args) {
 		if(g_PointerPressed) {
-			SendPointerEvent(wnd, args, Application::POINT_EVENT_TYPE::DRAG);
+			SendPointerEvent(wnd, args, POINT_EVENT_TYPE::DRAG);
 		}
 	}
 
 	void OnPointerPressed(CoreWindow^ wnd, PointerEventArgs^ args) {
-		SendPointerEvent(wnd, args, Application::POINT_EVENT_TYPE::DOWN);
+		SendPointerEvent(wnd, args, POINT_EVENT_TYPE::DOWN);
 		g_PointerPressed = true;
 	}
 

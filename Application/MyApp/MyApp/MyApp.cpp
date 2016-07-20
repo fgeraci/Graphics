@@ -6,15 +6,28 @@
 using namespace Application;
 using namespace Windows::UI::Core;
 using namespace Windows::Foundation;
+using namespace Application::Enums::Transformation;
+using namespace Application::Enums::Input;
 
 MyApp::MyApp() {
 	g_Paused = false;
 	g_Graphics = new Gfx();
 	InitializeInput();
 	g_SelectedEntity = g_Graphics->MainCamera();
+
+	// add test polygon
+	//Entity* p = AddPolygon(POLYGON_TYPE::CUBE, true);
+	//p->SetParent(g_WorldEntity.get());
+	//p->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::RIGHT, TRANSFORM_HIERARCHY::LOCAL, 5.0f);
+	//p->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::UP, TRANSFORM_HIERARCHY::WORLD);
+	//p = AddPolygon(POLYGON_TYPE::CUBE, true);
+	//p->SetParent(g_WorldEntity.get());
+	//p->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::LEFT, TRANSFORM_HIERARCHY::LOCAL, 5.0f);
+	//p->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::UP, TRANSFORM_HIERARCHY::WORLD);
+
 }
 
-void MyApp::Update(Ticker^ t) {
+void MyApp::Update(Ticker* t) {
 	
 	// process keyboard input
 	if(t->Tick()) {
@@ -41,22 +54,22 @@ void MyApp::Resize(UINT width, UINT height) {
 
 void MyApp::InitializeInput() {
 	// UI map
-	g_InputMapUI[OPTIONS] = VirtualKey::O;
-	g_InputMapUI[ESCAPE] = VirtualKey::Escape;
-	g_InputMapUI[PAUSE] = VirtualKey::P;
+	g_InputMapUI[INPUT_MAP_UI::OPTIONS] = VirtualKey::O;
+	g_InputMapUI[INPUT_MAP_UI::ESCAPE] = VirtualKey::Escape;
+	g_InputMapUI[INPUT_MAP_UI::PAUSE] = VirtualKey::P;
 	// Action map
-	g_InputMapAction[FORWARD] = VirtualKey::W;
-	g_InputMapAction[BACKWARDS] = VirtualKey::S;
-	g_InputMapAction[LEFT] = VirtualKey::Q;
-	g_InputMapAction[RIGHT] = VirtualKey::E;
-	g_InputMapAction[LEFT_STRAFE] = VirtualKey::A;
-	g_InputMapAction[RIGHT_STRAFE] = VirtualKey::D;
-	g_InputMapAction[MODIFIER] = VirtualKey::LeftShift;
-	g_InputMapAction[MODIFIER_SEC] = VirtualKey::LeftControl;
+	g_InputMapAction[INPUT_MAP_ACTION::FORWARD] = VirtualKey::W;
+	g_InputMapAction[INPUT_MAP_ACTION::BACKWARDS] = VirtualKey::S;
+	g_InputMapAction[INPUT_MAP_ACTION::LEFT] = VirtualKey::Q;
+	g_InputMapAction[INPUT_MAP_ACTION::RIGHT] = VirtualKey::E;
+	g_InputMapAction[INPUT_MAP_ACTION::LEFT_STRAFE] = VirtualKey::A;
+	g_InputMapAction[INPUT_MAP_ACTION::RIGHT_STRAFE] = VirtualKey::D;
+	g_InputMapAction[INPUT_MAP_ACTION::MODIFIER] = VirtualKey::LeftShift;
+	g_InputMapAction[INPUT_MAP_ACTION::MODIFIER_SEC] = VirtualKey::LeftControl;
 	// Pointer map
-	g_InputMapPointer[CLICK_ACTION] = VirtualKey::RightButton;
-	g_InputMapPointer[CLICK_SELECT] = VirtualKey::LeftButton;
-	g_InputMapPointer[CLICK_DRAG_ACTION] = VirtualKey::RightButton;
+	g_InputMapPointer[INPUT_MAP_POINTER::CLICK_ACTION] = VirtualKey::RightButton;
+	g_InputMapPointer[INPUT_MAP_POINTER::CLICK_SELECT] = VirtualKey::LeftButton;
+	g_InputMapPointer[INPUT_MAP_POINTER::CLICK_DRAG_ACTION] = VirtualKey::RightButton;
 }
 
 void MyApp::Terminate() {
@@ -76,29 +89,29 @@ void MyApp::ProcessInput(INPUT_MAP_ACTION key, double delta) {
 	delta *= Application::m_GlobalSpeedModifier * ( mod ? m_GlobalModSpeedModifier : 1);
 	g_SelectedEntity->SetDirty(true);
 	switch(key) {
-	case FORWARD: 
+	case INPUT_MAP_ACTION::FORWARD:
 		if(mod_sec)
-			g_SelectedEntity->Transform(TRANSFORMATION_TYPE::ROTATE, DIRECTION::LOCAL_UP, m_RotationGlobalModifier);
+			g_SelectedEntity->Transform(TRANSFORMATION_TYPE::ROTATE, TRANSFORM_DIRECTION::UP, TRANSFORM_HIERARCHY::LOCAL, m_RotationGlobalModifier);
 		else
-			g_SelectedEntity->Transform(TRANSFORMATION_TYPE::TRANSLATE, DIRECTION::WORLD_FORWARD, static_cast<float>(delta));
+			g_SelectedEntity->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::FORWARD, TRANSFORM_HIERARCHY::WORLD,static_cast<float>(delta));
 		break;
-	case BACKWARDS:
+	case INPUT_MAP_ACTION::BACKWARDS:
 		if (mod_sec)
-			g_SelectedEntity->Transform(TRANSFORMATION_TYPE::ROTATE, DIRECTION::LOCAL_DOWN, m_RotationGlobalModifier);
+			g_SelectedEntity->Transform(TRANSFORMATION_TYPE::ROTATE, TRANSFORM_DIRECTION::DOWN, TRANSFORM_HIERARCHY::LOCAL, m_RotationGlobalModifier);
 		else
-			g_SelectedEntity->Transform(TRANSFORMATION_TYPE::TRANSLATE, DIRECTION::WORLD_BACKWARDS, static_cast<float>(delta));
+			g_SelectedEntity->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::BACKWARDS, TRANSFORM_HIERARCHY::WORLD, static_cast<float>(delta));
 		break;
-	case LEFT_STRAFE:
-		g_SelectedEntity->Transform(TRANSFORMATION_TYPE::TRANSLATE, DIRECTION::WORLD_STRAFE_LEFT, static_cast<float>(delta));
+	case INPUT_MAP_ACTION::LEFT_STRAFE:
+		g_SelectedEntity->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::STRAFE_LEFT, TRANSFORM_HIERARCHY::WORLD, static_cast<float>(delta));
 		break;
-	case RIGHT_STRAFE:
-		g_SelectedEntity->Transform(TRANSFORMATION_TYPE::TRANSLATE, DIRECTION::WORLD_STRAFE_RIGHT, static_cast<float>(delta));
+	case INPUT_MAP_ACTION::RIGHT_STRAFE:
+		g_SelectedEntity->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::STRAFE_RIGHT, TRANSFORM_HIERARCHY::WORLD, static_cast<float>(delta));
 		break;
-	case LEFT:
-		g_SelectedEntity->Transform(TRANSFORMATION_TYPE::ROTATE, DIRECTION::WORLD_LEFT, m_RotationGlobalModifier);
+	case INPUT_MAP_ACTION::LEFT:
+		g_SelectedEntity->Transform(TRANSFORMATION_TYPE::ROTATE, TRANSFORM_DIRECTION::LEFT, TRANSFORM_HIERARCHY::WORLD, m_RotationGlobalModifier);
 		break;
-	case RIGHT:
-		g_SelectedEntity->Transform(TRANSFORMATION_TYPE::ROTATE, DIRECTION::WORLD_RIGHT, m_RotationGlobalModifier);
+	case INPUT_MAP_ACTION::RIGHT:
+		g_SelectedEntity->Transform(TRANSFORMATION_TYPE::ROTATE, TRANSFORM_DIRECTION::RIGHT, TRANSFORM_HIERARCHY::WORLD, m_RotationGlobalModifier);
 		break;
 	}
 }
@@ -118,13 +131,14 @@ void MyApp::ProcessPointer(Point p, VirtualKey k, POINT_EVENT_TYPE t, int wheel)
 			float y = g_LastPointerData.Y - p.Y;
 			// the mouse speed will be global modifier * x/yDelta
 			g_SelectedEntity->Transform(TRANSFORMATION_TYPE::ROTATE, 
-				(m_PointerInvert*x) > 0 ? DIRECTION::WORLD_LEFT : DIRECTION::WORLD_RIGHT, m_PointerSens*abs(x));
+				(m_PointerInvert*x) > 0 ? TRANSFORM_DIRECTION::LEFT : TRANSFORM_DIRECTION::RIGHT, TRANSFORM_HIERARCHY::WORLD, m_PointerSens*abs(x));
 			g_SelectedEntity->Transform(TRANSFORMATION_TYPE::ROTATE, 
-				(m_PointerInvert*y) < 0 ? DIRECTION::LOCAL_DOWN : DIRECTION::LOCAL_UP, m_PointerSens*abs(y));
+				(m_PointerInvert*y) < 0 ? TRANSFORM_DIRECTION::DOWN : TRANSFORM_DIRECTION::UP, TRANSFORM_HIERARCHY::LOCAL,m_PointerSens*abs(y));
 		}
 		break;
 	case POINT_EVENT_TYPE::WHEEL:
-		g_SelectedEntity->Transform(TRANSFORMATION_TYPE::TRANSLATE, wheel > 0 ? DIRECTION::WORLD_FORWARD : DIRECTION::WORLD_BACKWARDS);
+		g_SelectedEntity->Transform(TRANSFORMATION_TYPE::TRANSLATE, wheel > 0 ? TRANSFORM_DIRECTION::FORWARD : TRANSFORM_DIRECTION::BACKWARDS,
+			TRANSFORM_HIERARCHY::WORLD,1.0f);
 	}
 	g_LastPointerData = p;
 }

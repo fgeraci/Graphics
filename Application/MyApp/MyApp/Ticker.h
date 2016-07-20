@@ -6,19 +6,15 @@ using namespace Platform;
 
 namespace Application {
 
-	ref class Ticker sealed {
+	class Ticker sealed {
 
 	public:
 
-		property double DeltaTime {
-			double get() {
-				return g_DeltaTime;
-			}
-		}
+		static double DeltaTime;
 
-		property bool Paused;
+		bool Paused() { return g_Paused; }
 
-		property int FPS;
+		int FPS() { return g_CurrentFPS; }
 
 		bool Tick();
 
@@ -26,7 +22,7 @@ namespace Application {
 
 	private:
 
-		double g_DeltaTime;
+		bool g_Paused = false;
 
 		__int64 g_Cps;
 		__int64 g_LastUpdate;
@@ -38,12 +34,10 @@ namespace Application {
 
 		UINT g_FPS = 0;
 
-		property __int64 Now {
-			__int64 get() {
-				__int64 time;
-				QueryPerformanceCounter((LARGE_INTEGER*)&time);
-				return time;
-			}
+		 __int64 Now() {
+			__int64 time;
+			QueryPerformanceCounter((LARGE_INTEGER*)&time);
+			return time;
 		}
 
 		void PrintCurrentFPS();

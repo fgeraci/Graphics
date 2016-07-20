@@ -30,17 +30,19 @@
 #include <math.h>					// good old math
 #include "DirectXHelper.h"			// ThrowIfFailed
 #include "DirectXColors.h"			// DirectX::Colors
-	// order matters, MyApp uses Gfx
+	// order matters !!!
 #include "Constants.h"				// Application-wide constants
+#include "Enums.h"					// Application-wide enums
 #include "MathUtils.h"				// Matrix / Vectors math
 #include "Structs.h"				// Application-wide structs
 #include "UploadBuffer.h"			// Resources wrapper class
 #include "ITransformable.h"			// All transformable objects
 #include "Entity.h"					// All objects wrapper
+#include "Ticker.h"					// FPS controller
 #include "FrameResources.h"			// Resources to be updated on a frame basis
 #include "Geometries.h"				// Geometry Helper - Vertices and Polygons
 #include "Camera.h"					// Camera entity
-#include "Ticker.h"					// FPS controller
+#include "WorldEntity.h"			// World entity
 #include "Gfx.h"					// Graphics driver - API manager
 #include "MyApp.h"					// Our Main Application
 

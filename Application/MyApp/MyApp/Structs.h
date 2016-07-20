@@ -2,6 +2,8 @@
 
 #include "pch.h"
 
+using namespace Application::Enums::Transformation;
+
 namespace Application {
 	
 	struct Vertex {
@@ -18,6 +20,15 @@ namespace Application {
 
 	struct ObjectConstantData {
 		XMFLOAT4X4 WorldViewProj = Math::MatrixIdentity();	// from MathUtils.h - a small helper we added
+	};
+
+	struct Transform {
+		Transform(float f, TRANSFORM_HIERARCHY h, TRANSFORMATION_TYPE t, TRANSFORM_DIRECTION d) 
+			: modifier(f), hierarchy(h), type(t), direction(d) {}
+		float				modifier;
+		TRANSFORM_HIERARCHY hierarchy;
+		TRANSFORMATION_TYPE type;
+		TRANSFORM_DIRECTION direction;
 	};
 
 }
