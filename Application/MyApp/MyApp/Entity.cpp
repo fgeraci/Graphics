@@ -20,31 +20,32 @@ void Entity::UpdateWorldMatrix() {
 	g_Right = XMVector3Cross(g_Up, g_Forward);
 }
 
-void Entity::Transform(TRANSFORMATION_TYPE t, DIRECTION d, float speed) {
+void Entity::Transform(TRANSFORMATION_TYPE t, TRANSFORM_DIRECTION d, TRANSFORM_HIERARCHY h, float mod) {
 	switch(t) {
-	case TRANSLATE:
-		Translate(d, speed);
+	case TRANSFORMATION_TYPE::TRANSLATE:
+		Translate(d,h, mod);
 		break;
-	case ROTATE:
-		Rotate(d,speed);
+	case TRANSFORMATION_TYPE::ROTATE:
+		Rotate(d, h, mod);
 		break;
 	}
 }
 
-void Entity::Translate(DIRECTION d, float speed) {
+void Entity::Translate(TRANSFORM_DIRECTION d, TRANSFORM_HIERARCHY h, float speed) {
 	// Concept: g_position += speed * forward
 	XMVECTOR delta = XMVectorReplicate(speed);
 	float dir = -1;
 	switch(d) {
-	case WORLD_FORWARD:case WORLD_UP:case WORLD_STRAFE_RIGHT:
-	case LOCAL_FORWARD:case LOCAL_UP:case LOCAL_STRAFE_RIGHT:
-	case WORLD_RIGHT:case LOCAL_RIGHT:
+	case TRANSFORM_DIRECTION::FORWARD:
+	case TRANSFORM_DIRECTION::RIGHT:
+	case TRANSFORM_DIRECTION::UP: 
+	case TRANSFORM_DIRECTION::STRAFE_RIGHT:
 		dir = 1.0f;
 	}
 	XMVECTOR mainAxis;
-	if (d == WORLD_FORWARD || d == WORLD_BACKWARDS) {
+	if (d == TRANSFORM_DIRECTION::FORWARD || d == TRANSFORM_DIRECTION::BACKWARDS) {
 		mainAxis = g_Forward;
-	} else if (d == WORLD_UP || d == WORLD_DOWN) {
+	} else if (d == TRANSFORM_DIRECTION::UP || d == TRANSFORM_DIRECTION::DOWN) {
 		mainAxis = g_Up;
 	} else mainAxis = g_Right;
 	g_Position = XMVectorMultiplyAdd(delta, dir * mainAxis, g_Position);
@@ -53,33 +54,39 @@ void Entity::Translate(DIRECTION d, float speed) {
 	}
 }
 
-void Entity::Rotate(DIRECTION d, float speed = 1.0f) {
+void Entity::Rotate(TRANSFORM_DIRECTION d, TRANSFORM_HIERARCHY h, float angle) {
 	// this function pointer will get the proper call
 	int dir = m_LeftScreenSide;
-	bool local = true;
+	bool local = (h == TRANSFORM_HIERARCHY::LOCAL);
+	
 	switch (d) {
-	case WORLD_LEFT:case LOCAL_LEFT:
-	case WORLD_UP: case LOCAL_UP:
+	case TRANSFORM_DIRECTION::UP: 
+	case TRANSFORM_DIRECTION::LEFT: 
+	case TRANSFORM_DIRECTION::STRAFE_LEFT:
 		dir = m_RightScreenSide;
 	}
+
 	XMVECTOR axis;
+	
 	switch(d) {
-	case WORLD_RIGHT: case WORLD_LEFT: 
-		local = false;
-	case LOCAL_RIGHT: case LOCAL_LEFT:
-		axis	= (d == WORLD_RIGHT || d == WORLD_LEFT)	 ? m_WorldUpVector : g_Up;
+	case TRANSFORM_DIRECTION::RIGHT:			// yaw 
+	case TRANSFORM_DIRECTION::LEFT:
+		axis	= local	 ? g_Up : m_WorldUpVector;
 		break;
-	case WORLD_UP: case WORLD_DOWN: 
-		local = false;
-	case LOCAL_UP: case LOCAL_DOWN:
+	case TRANSFORM_DIRECTION::STRAFE_RIGHT:		// roll 
+	case TRANSFORM_DIRECTION::STRAFE_LEFT:
+		axis = g_Forward;				
+		break;
+	case TRANSFORM_DIRECTION::UP:				// pitch
+	case TRANSFORM_DIRECTION::DOWN:
 		axis	= g_Right;
 	}
 	
 	XMMATRIX r, t;
 	XMFLOAT4X4 t4, r4;
 
-	if(speed > 1.0f) {
-		r = XMMatrixRotationAxis(axis, (speed * XM_PI) / 180.00f);
+	if(angle > 1.0f) {
+		r = XMMatrixRotationAxis(axis, (angle * XM_PI) / 180.00f);
 	} else 
 		r = (dir == 1) ? Math::GetRotationMatrixForAxis(axis) : XMMatrixTranspose(Math::GetRotationMatrixForAxis(axis));
 	

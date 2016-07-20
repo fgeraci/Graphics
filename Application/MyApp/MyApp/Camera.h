@@ -4,6 +4,7 @@
 
 using namespace DirectX;
 using namespace Application::Math;
+using namespace Application::Enums::Transformation;
 
 namespace Application {
 
@@ -62,30 +63,37 @@ namespace Application {
 			g_WorldViewProj = m;
 		}
 
-		void Camera::Rotate(DIRECTION d, float speed) {
-			
-			// this function pointer will get the proper call
+		void Camera::Rotate(TRANSFORM_DIRECTION d, TRANSFORM_HIERARCHY h, float angle) override {
 			float dir = m_LeftScreenSide;
 			switch (d) {
-			case WORLD_LEFT: case LOCAL_UP:
+			case LEFT: case UP: case STRAFE_LEFT:
 				dir = m_RightScreenSide;
 			}
 			XMVECTOR axis;
 			switch (d) {
-			case WORLD_RIGHT: case WORLD_LEFT:
+			case TRANSFORM_DIRECTION::RIGHT: 
+			case TRANSFORM_DIRECTION::LEFT:
 				axis = m_WorldUpVector;
 				break;
-			case LOCAL_UP: case LOCAL_DOWN:
+			case TRANSFORM_DIRECTION::STRAFE_RIGHT: 
+			case TRANSFORM_DIRECTION::STRAFE_LEFT:
+				axis = g_Forward;
+				break;
+			case TRANSFORM_DIRECTION::UP: 
+			case TRANSFORM_DIRECTION::DOWN:
 				axis = g_Right;
 			}
-			// for the camera, only deal with its local axes
-			XMMATRIX r = (dir == 1) ? Math::GetRotationMatrixForAxisWeighted(axis,speed) : XMMatrixTranspose(Math::GetRotationMatrixForAxisWeighted(axis,speed));
+			
+			XMMATRIX r = (dir == 1) ? 
+				Math::GetRotationMatrixForAxisWeighted(axis, angle) : 
+				XMMatrixTranspose(Math::GetRotationMatrixForAxisWeighted(axis, angle));
+			
 			g_Up = XMVector3Normalize(XMVector4Transform(g_Up, r));
 			g_Forward = XMVector3Normalize(XMVector4Transform(g_Forward, r));
 			g_Right = XMVector3Normalize(XMVector4Transform(g_Right, r));
 		}
 
-
-		void Scale() override { return; }
+		/* Do nothing - who would scale a camera! */
+		void Scale(TRANSFORM_DIRECTION d, TRANSFORM_HIERARCHY h, float angle) override { return; }
 	};
 }

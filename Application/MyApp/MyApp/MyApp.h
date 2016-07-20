@@ -4,41 +4,9 @@
 
 using namespace Windows::System;
 using namespace Windows::Foundation;
+using namespace Application::Enums::Input;
 
 namespace Application {
-
-	enum INPUT_MAP_UI {
-		OPTIONS = 0,
-		ESCAPE,
-		PAUSE,
-		INPUT_MAP_SIZE_UI
-	};
-
-	enum INPUT_MAP_POINTER {
-		CLICK_ACTION = 0,
-		CLICK_SELECT,
-		CLICK_DRAG_ACTION,
-		CLICK_DRAG_SELECT,
-		INPUT_MAP_SIZE_POINTER
-	};
-
-	enum INPUT_MAP_ACTION {
-		FORWARD = 0,
-		BACKWARDS,
-		LEFT_STRAFE,
-		RIGHT_STRAFE,
-		LEFT,
-		RIGHT,
-		MODIFIER,
-		MODIFIER_SEC,
-		INPUT_MAP_SIZE_ACTION
-	};
-
-	enum POINT_EVENT_TYPE {
-		DOWN,
-		WHEEL,
-		DRAG
-	};
 
 	class MyApp sealed {
 

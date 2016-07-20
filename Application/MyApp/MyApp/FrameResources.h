@@ -2,6 +2,8 @@
 
 #include "pch.h"
 
+using namespace Application::Enums::Transformation;
+
 namespace Application {
 	
 	class FrameResources {
@@ -54,8 +56,8 @@ namespace Application {
 			if(g_EntityResource) {
 				/* Test */
 				if (g_EntityResource->Name() == L"Cube") {
-					g_EntityResource->Transform(TRANSFORMATION_TYPE::ROTATE, DIRECTION::WORLD_LEFT);
-					g_EntityResource->Transform(TRANSFORMATION_TYPE::ROTATE, DIRECTION::LOCAL_RIGHT,5.0f);
+					g_EntityResource->Transform(TRANSFORMATION_TYPE::ROTATE, TRANSFORM_DIRECTION::LEFT, TRANSFORM_HIERARCHY::WORLD);
+					g_EntityResource->Transform(TRANSFORMATION_TYPE::ROTATE, TRANSFORM_DIRECTION::RIGHT, TRANSFORM_HIERARCHY::LOCAL,5.0f);
 				}
 				/*     */
 				g_EntityResource->UpdateVertexBuffer();

@@ -3,6 +3,7 @@
 using namespace Windows::UI::Core;
 using namespace Application;
 using namespace DX;
+using namespace Application::Enums::Transformation;
 
 #pragma region Constructor
 
@@ -16,11 +17,11 @@ Gfx::Gfx() {
 
 	// add test polygon
 	Entity* p = AddPolygon(POLYGON_TYPE::CUBE, true);
-	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, DIRECTION::WORLD_RIGHT, 5.0f);
-	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, DIRECTION::WORLD_UP);
+	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::RIGHT, TRANSFORM_HIERARCHY::LOCAL, 5.0f);
+	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::UP, TRANSFORM_HIERARCHY::WORLD);
 	p = AddPolygon(POLYGON_TYPE::CUBE, true);
-	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, DIRECTION::WORLD_LEFT, 5.0f);
-	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, DIRECTION::WORLD_UP);
+	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::LEFT, TRANSFORM_HIERARCHY::LOCAL, 5.0f);
+	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::UP, TRANSFORM_HIERARCHY::WORLD);
 	// adding grid
 	AddPolygon(POLYGON_TYPE::GRID);
 	CloseCommandList();
