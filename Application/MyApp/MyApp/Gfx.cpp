@@ -19,8 +19,8 @@ Gfx::Gfx() {
 
 	// adding grid
 	AddPolygon(POLYGON_TYPE::GRID);
-	CloseCommandList();
-	FlushGPUCommandsQueue();
+	CloseGlobalCommandList();
+	FlushGPUCommandsQueueAll();
 	LOGMESSAGE(L"Gfx --> Initialization completed\n");
 }
 
@@ -39,10 +39,7 @@ void Gfx::Draw() {
 		curAllocator = fr->CommandAllocator();
 		g_CurrentFence = g_Fence->GetCompletedValue();
 		if(g_CurrentFence < fr->Fence()) {
-			HANDLE signalHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
-			ThrowIfFailed(g_Fence->SetEventOnCompletion(fr->Fence(), signalHandle));
-			WaitForSingleObject(signalHandle, INFINITE);
-			CloseHandle(signalHandle);
+			FlushGPUCommandsQueueForFence(fr->Fence());
 		}
 		g_CurrentFence = g_Fence->GetCompletedValue() + 1;
 		fr->UpdateFence(g_CurrentFence);
@@ -70,13 +67,10 @@ void Gfx::Draw() {
 	// Update view every frame
 	UpdateCamera();
 
-	// Update only current FrameResources
-	if(fr) 
-		fr->Update(g_CommandList);
-	
 	// Draw all of them
 	int allEntities = static_cast<int>(g_FrameResources.size());
 	for(int i = 0; i < allEntities; ++i) {
+		g_FrameResources[i].Update(g_CommandList);
 		Entity* e = g_FrameResources[i].Entity();
 		if(e) {
 			if (e->IsEnabled() && e->IsDrawable()) {
@@ -106,7 +100,7 @@ void Gfx::Draw() {
 		&CD3DX12_RESOURCE_BARRIER::Transition(
 			GetCurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
-	CloseCommandList();
+	CloseGlobalCommandList();
 
 	ThrowIfFailed(g_SwapChain->Present(0, 0));
 	g_CurrentBackbuffer = (g_CurrentBackbuffer + 1) % g_SwapChainBuffersCount;
@@ -185,6 +179,9 @@ void Gfx::InitializeDirect3D() {
 	// start out closed
 	ThrowIfFailed(g_CommandList->Close());
 
+	// Secondary CommandList only for entities creation
+	InitializeEntityCommandList();
+
 	LOGMESSAGE(L"7. Initialize Swap Chain\n");
 		// first we describe the swap chain
 	CreateSwapChain();
@@ -201,6 +198,14 @@ void Gfx::InitializeMainCamera() {
 	g_MainCamera = std::make_unique<Camera>(true, g_MainCameraInitialPosition);
 	g_MainCamera->InitializeUploadBuffer(g_Device);
 	g_MainCameraBuffer = g_MainCamera->GetUploadBuffer();
+}
+
+void Gfx::InitializeEntityCommandList() {
+	ThrowIfFailed(g_Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(g_EntityCommandList.commandAllocator.GetAddressOf())));
+	ThrowIfFailed(g_Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, g_EntityCommandList.commandAllocator.Get(),
+		nullptr, // pipeline state object <- should any pre-rendering is needed, we would need a D3D12Pipeline object
+		IID_PPV_ARGS(g_EntityCommandList.commandList.GetAddressOf())));
+	CloseEntitiesCommandLists();
 }
 
 #pragma endregion Initialization
@@ -391,7 +396,7 @@ void Gfx::CreateDepthStencilBuffer() {
 		
 }
 
-void Gfx::FlushGPUCommandsQueue() {
+void Gfx::FlushGPUCommandsQueueAll() {
 	g_CurrentFence++;
 	ThrowIfFailed(g_CommandQueue->Signal(g_Fence.Get(), g_CurrentFence));
 	if (g_Fence->GetCompletedValue() < g_CurrentFence) {
@@ -402,11 +407,24 @@ void Gfx::FlushGPUCommandsQueue() {
 	}
 }
 
+void Gfx::FlushGPUCommandsQueueForFence(UINT64 forFence) {
+	HANDLE signalHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
+	ThrowIfFailed(g_Fence->SetEventOnCompletion(forFence, signalHandle));
+	WaitForSingleObject(signalHandle, INFINITE);
+	CloseHandle(signalHandle);
+}
+
 ID3D12Resource* Gfx::GetCurrentBackBuffer() {
 	return g_Backbuffers[g_CurrentBackbuffer].Get();
 }
 
-void Gfx::CloseCommandList() {
+void Gfx::CloseEntitiesCommandLists() {
+	ThrowIfFailed(g_EntityCommandList.commandList->Close());
+	ID3D12CommandList* lists[] = { g_EntityCommandList.commandList.Get() };
+	g_CommandQueue->ExecuteCommandLists(1, lists);
+}
+
+void Gfx::CloseGlobalCommandList() {
 	ThrowIfFailed(g_CommandList->Close());
 	ID3D12CommandList* lists[] = { g_CommandList.Get() };
 	g_CommandQueue->ExecuteCommandLists(_countof(lists), lists);
@@ -426,7 +444,6 @@ D3D12_CPU_DESCRIPTOR_HANDLE Gfx::GetDsv() {
 ComPtr<ID3D12Resource> Gfx::CreateDefaultBuffer(UINT byteSize, const void* data, ComPtr<ID3D12Resource>& uploadBuffer) {
 	
 	ComPtr<ID3D12Resource> newBuffer;
-	
 	
 	// 1. create default buffer (GPU only access)
 	// we use CD3DX12 wrapper calss which provcides utility methods for creating and describing plain common buffer reosurces
@@ -460,13 +477,15 @@ ComPtr<ID3D12Resource> Gfx::CreateDefaultBuffer(UINT byteSize, const void* data,
 
 	// 4. Have the CPU to copy the Data to the GPUs buffer
 		// Make the new default buffer to be a copy destination
-	g_CommandList->ResourceBarrier(
+	
+
+	g_EntityCommandList.commandList->ResourceBarrier(
 		1,&CD3DX12_RESOURCE_BARRIER::Transition(newBuffer.Get(),D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST)
 	);
 		// Schedule the work
-	UpdateSubresources<1>(g_CommandList.Get(), newBuffer.Get(), uploadBuffer.Get(), 0, 0, 1, &srd);
+	UpdateSubresources<1>(g_EntityCommandList.commandList.Get(), newBuffer.Get(), uploadBuffer.Get(), 0, 0, 1, &srd);
 		// make the new default buffer to be a generic readable only
-	g_CommandList->ResourceBarrier(
+	g_EntityCommandList.commandList->ResourceBarrier(
 		1, &CD3DX12_RESOURCE_BARRIER::Transition(newBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ)
 	);
 
@@ -513,6 +532,15 @@ Entity* Gfx::AddPolygon(POLYGON_TYPE type) {
 
 Entity* Gfx::AddPolygon(POLYGON_TYPE type, bool dyn) {
 	
+	// Check there are no commands pending for this allocator
+	if (g_Fence->GetCompletedValue() < g_EntityCommandList.fence) {
+		FlushGPUCommandsQueueForFence(g_EntityCommandList.fence);
+	}
+
+	g_CurrentFence = g_Fence->GetCompletedValue() + 1;
+	ThrowIfFailed(g_EntityCommandList.commandAllocator->Reset());
+	ThrowIfFailed(g_EntityCommandList.commandList->Reset(g_EntityCommandList.commandAllocator.Get(), nullptr));
+
 	Polygon *p = nullptr;
 	UINT totalVertices = 0, totalIndices = 0;
 
@@ -567,9 +595,16 @@ Entity* Gfx::AddPolygon(POLYGON_TYPE type, bool dyn) {
 	tmpVUBuffer = tmpVBuffer = tmpIUBuffer = tmpIBuffer = nullptr;
 
 	// add it to the queue
-	g_CurrentFence = g_Fence->GetCompletedValue();
-	FrameResources fr(g_Device, g_CurrentFence, p);
+	FrameResources fr(g_Device, 0, p);
 	g_FrameResources.push_back(fr);
+
+	// Close the entities queue
+	CloseEntitiesCommandLists();
+
+	// Do not move forward without creating resources, might cause misuse of buffers
+	g_CurrentFence = g_Fence->GetCompletedValue() + 1;
+	g_CommandQueue->Signal(g_Fence.Get(), g_CurrentFence);
+	FlushGPUCommandsQueueForFence(g_CurrentFence);
 
 	return p;
 }
@@ -690,7 +725,7 @@ void Gfx::CreateRootSignature() {
 void Gfx::ResizeBuffers() {
 	LOGMESSAGE(L"Resizing buffers ... \n");
 	LOGMESSAGE(L"\tFlush the queue and reset buffers\n");
-	FlushGPUCommandsQueue();
+	FlushGPUCommandsQueueAll();
 
 	ThrowIfFailed(g_CommandList->Reset(g_CommandAllocator.Get(), nullptr));
 
@@ -722,8 +757,8 @@ void Gfx::ResizeBuffers() {
 	CreateDepthStencilBuffer();
 
 
-	CloseCommandList();
-	FlushGPUCommandsQueue();
+	CloseGlobalCommandList();
+	FlushGPUCommandsQueueAll();
 
 	LOGMESSAGE(L"\tSet the Viewport\n");
 	// describe the viewport
@@ -745,7 +780,7 @@ void Gfx::ResizeBuffers() {
 void Gfx::Terminate() {
 	LOGMESSAGE(L"Finalizing graphics ... \n");
 	assert(g_Device);
-	FlushGPUCommandsQueue();
+	FlushGPUCommandsQueueAll();
 	g_Device.Reset();
 }
 
@@ -757,7 +792,7 @@ void Gfx::InitializePipeline() {
 	
 	LOGMESSAGE(L"Initializing Pipeline\n");
 	
-	FlushGPUCommandsQueue();
+	FlushGPUCommandsQueueAll();
 
 	ThrowIfFailed(g_CommandAllocator->Reset());
 	ThrowIfFailed(g_CommandList->Reset(g_CommandAllocator.Get(), nullptr));
@@ -779,8 +814,8 @@ void Gfx::InitializePipeline() {
 	g_CommandList->SetPipelineState(g_PipelineStateTriangle.Get());
 
 	LOGMESSAGE(L"\tFlush the queue\n");
-	CloseCommandList();
-	FlushGPUCommandsQueue();
+	CloseGlobalCommandList();
+	FlushGPUCommandsQueueAll();
 	g_CommandAllocator->Reset();
 	g_CommandList->Reset(g_CommandAllocator.Get(), nullptr);
 }

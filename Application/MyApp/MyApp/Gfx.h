@@ -39,6 +39,7 @@ namespace Application {
 
 		Entity* AddPolygon(POLYGON_TYPE);
 		Entity* AddPolygon(POLYGON_TYPE, bool dyn);
+		Entity* WorldEntityParent() { return g_WorldEntity.get(); }
 
 		// Accessors / Mutators
 		Entity* MainCamera();
@@ -62,12 +63,12 @@ namespace Application {
 		
 		// Main Scene Objects
 		std::unique_ptr<Camera> g_MainCamera = nullptr;
-		std::unique_ptr<Grid> g_Grid = nullptr;
+		std::unique_ptr<Grid>	g_Grid = nullptr;
 		std::unique_ptr<Entity> g_WorldEntity = nullptr;
 
-		// Buffers
+		// Buffers and command lists
 		UploadBuffer<ObjectConstantData>* g_MainCameraBuffer = nullptr;
-
+		CommandListHelper				  g_EntityCommandList;
 		// D3D Resources
 			// Fresources will be updated once per draw call and pushed to the CPU. The CPU will be blocked from continuing
 			// if the GPU hasn't caught up with it, ideally, GPU utilization has to be maxed out, while CPU can idle.
@@ -75,7 +76,7 @@ namespace Application {
 		std::vector<FrameResources> g_FrameResources;
 		int g_CurrentFrameResources = -1;
 
-		// std::vector<Polygon*> g_Polygons;
+
 		ComPtr<ID3D12Resource> g_CPUVertexBuffer = nullptr;
 		ComPtr<ID3D12Resource> g_CPUIndexBuffer = nullptr;
 		ComPtr<ID3D12Resource> g_GPUVertexBuffer = nullptr;
@@ -120,6 +121,7 @@ namespace Application {
 		void InitializeDirect3D();
 		void InitializePipeline();
 		void InitializeMainCamera();
+		void InitializeEntityCommandList();
 
 		// Utility
 		IDXGIAdapter1* GetGPU();
@@ -127,11 +129,13 @@ namespace Application {
 		void CheckAntialisngSupport();
 		void CreateDescriptorHeaps();
 		void CreateDepthStencilBuffer();
-		void FlushGPUCommandsQueue();
+		void FlushGPUCommandsQueueForFence(UINT64);
+		void FlushGPUCommandsQueueAll();
 		ID3D12Resource* GetCurrentBackBuffer();
 		CD3DX12_CPU_DESCRIPTOR_HANDLE GetCurrentRtv();
 		D3D12_CPU_DESCRIPTOR_HANDLE GetDsv();
-		void CloseCommandList();
+		void CloseGlobalCommandList();
+		void CloseEntitiesCommandLists();
 		void CreateSwapChain();
 		void CreateInputLayout();
 		void CreateCameraConstantBuffers();

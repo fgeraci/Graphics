@@ -2,6 +2,7 @@
 
 #include "pch.h"
 
+using namespace DirectX;
 using namespace Application::Enums::Transformation;
 
 namespace Application {

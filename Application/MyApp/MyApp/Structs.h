@@ -2,6 +2,8 @@
 
 #include "pch.h"
 
+using namespace DirectX;
+using namespace Microsoft::WRL;
 using namespace Application::Enums::Transformation;
 
 namespace Application {
@@ -29,6 +31,12 @@ namespace Application {
 		TRANSFORM_HIERARCHY hierarchy;
 		TRANSFORMATION_TYPE type;
 		TRANSFORM_DIRECTION direction;
+	};
+
+	struct CommandListHelper {
+		ComPtr<ID3D12GraphicsCommandList>	commandList;
+		ComPtr<ID3D12CommandAllocator>		commandAllocator;
+		UINT64								fence;
 	};
 
 }
