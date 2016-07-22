@@ -10,28 +10,31 @@ using namespace Application::Enums::Transformation;
 using namespace Application::Enums::Input;
 
 MyApp::MyApp() {
+	LOGMESSAGE(L"Initializing MyApp ...\n");
 	g_Paused = false;
 	g_Graphics = new Gfx();
 	InitializeInput();
 	g_SelectedEntity = g_Graphics->MainCamera();
 
 	// add test polygon
-	Entity* p = g_Graphics->AddPolygon(POLYGON_TYPE::CUBE, true);
-	p->SetParent(g_Graphics->WorldEntityParent());
-	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::RIGHT, TRANSFORM_HIERARCHY::LOCAL, 5.0f);
-	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::UP, TRANSFORM_HIERARCHY::WORLD);
-	p = g_Graphics->AddPolygon(POLYGON_TYPE::CUBE, true);
-	p->SetParent(g_Graphics->WorldEntityParent());
-	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::LEFT, TRANSFORM_HIERARCHY::LOCAL, 5.0f);
-	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::UP, TRANSFORM_HIERARCHY::WORLD);
-	p = g_Graphics->AddPolygon(POLYGON_TYPE::CUBE, true);
-	p->SetParent(g_Graphics->WorldEntityParent());
-	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::FORWARD, TRANSFORM_HIERARCHY::LOCAL, 5.0f);
-	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::UP, TRANSFORM_HIERARCHY::WORLD);
-	p = g_Graphics->AddPolygon(POLYGON_TYPE::CUBE, true);
-	p->SetParent(g_Graphics->WorldEntityParent());
-	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::BACKWARDS, TRANSFORM_HIERARCHY::LOCAL, 5.0f);
-	p->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::UP, TRANSFORM_HIERARCHY::WORLD);
+	g_Entities.push_back(g_Graphics->AddPolygon(POLYGON_TYPE::CUBE, true));
+	g_Entities[0]->SetParent(g_Graphics->WorldEntityParent());
+	g_Entities[0]->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::RIGHT, TRANSFORM_HIERARCHY::LOCAL, 5.0f);
+	g_Entities[0]->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::UP, TRANSFORM_HIERARCHY::WORLD);
+	g_Entities.push_back(g_Graphics->AddPolygon(POLYGON_TYPE::CUBE, true));
+	g_Entities[1]->SetParent(g_Graphics->WorldEntityParent());
+	g_Entities[1]->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::LEFT, TRANSFORM_HIERARCHY::LOCAL, 5.0f);
+	g_Entities[1]->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::UP, TRANSFORM_HIERARCHY::WORLD);
+	g_Entities.push_back(g_Graphics->AddPolygon(POLYGON_TYPE::CUBE, true));
+	g_Entities[2]->SetParent(g_Graphics->WorldEntityParent());
+	g_Entities[2]->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::FORWARD, TRANSFORM_HIERARCHY::LOCAL, 5.0f);
+	g_Entities[2]->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::UP, TRANSFORM_HIERARCHY::WORLD);
+	g_Entities.push_back(g_Graphics->AddPolygon(POLYGON_TYPE::CUBE, true));
+	g_Entities[3]->SetParent(g_Graphics->WorldEntityParent());
+	g_Entities[3]->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::BACKWARDS, TRANSFORM_HIERARCHY::LOCAL, 5.0f);
+	g_Entities[3]->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::UP, TRANSFORM_HIERARCHY::WORLD);
+	// add grid
+	g_Entities.push_back(g_Graphics->AddPolygon(POLYGON_TYPE::GRID));
 }
 
 void MyApp::Update(Ticker* t) {
@@ -39,10 +42,24 @@ void MyApp::Update(Ticker* t) {
 	// process keyboard input
 	if(t->Tick()) {
 		ReadAsyncKeys();
+
+		// handle entities
+		UpdateLogic();
+
 		// render
 		g_Graphics->Draw();
 	}
 
+}
+
+void MyApp::UpdateLogic() {
+	for(int i = 0; i < g_Entities.size(); ++i) {
+		/* Test */
+		if (g_Entities[i]->Name() == L"Cube") {
+			g_Entities[i]->Transform(TRANSFORMATION_TYPE::ROTATE, TRANSFORM_DIRECTION::LEFT, TRANSFORM_HIERARCHY::WORLD);
+			g_Entities[i]->Transform(TRANSFORMATION_TYPE::ROTATE, TRANSFORM_DIRECTION::RIGHT, TRANSFORM_HIERARCHY::LOCAL, 5.0f);
+		}
+	}
 }
 
 void MyApp::ReadAsyncKeys() {

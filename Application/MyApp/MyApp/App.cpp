@@ -69,6 +69,7 @@ public:
 	// Inherited via IFrameworkView
 	virtual void Initialize(Windows::ApplicationModel::Core::CoreApplicationView ^AppView)
 	{
+		LOGMESSAGE(L"\tApp::Initialize()\n");
 		/* Register Window's event handlers */
 		AppView->Activated += ref new TypedEventHandler		// pass OnActivate function address as the handler for the window's creation
 															// to the Activated event handler - match its parameters with the generic <T,Ts>
@@ -87,7 +88,7 @@ public:
 
 	virtual void SetWindow(Windows::UI::Core::CoreWindow ^window)
 	{
-
+		LOGMESSAGE(L"\tApp::SetWindow()\n");
 		/* Windows event handlers */
 
 		window->Closed += ref new TypedEventHandler
@@ -119,6 +120,7 @@ public:
 	
 	// Instantiate the application here
 	virtual void Load(Platform::String ^entryPoint) { 
+		LOGMESSAGE(L"\tApp::Load()\n");
 		try {
 			g_MainApplication = new MyApp();
 			g_Ticker = new Ticker(Application::m_GlobalFPS);
@@ -207,12 +209,13 @@ public:
 
 [MTAThread]
 int main(Array<String^>^ args) {
+	LOGMESSAGE(L"main() - Initializing global application...\n");
 	CoreApplication::Run(ref new AppCreator());
 	return 0;
 }
 
 void App::Run() {
-	LOGMESSAGE(L"App::Run\n");
+	LOGMESSAGE(L"App initialization completed -> App::Run()\n");
 	while (!(this->IsWindowClosed)) {
 
 		/* Different types of Application's events processing

@@ -256,7 +256,8 @@ void main() {
 		cout << "Inverse of " << invExample << " is: " << GetMatrixInverse(&invExample, 2);
 		
 #pragma endregion
-#pragma Transformations
+
+#pragma region Transformations
 
 		// simple triangle
 		XMVECTOR pa = XMVectorSet(1.0, 0.0, 0.0, 1.0);
@@ -291,7 +292,6 @@ void main() {
 		cout << "\nYour system does not support the DirectX's SIMD set :( ...";
 	}
 
-exit:
 	cout << "\n\nGood bye!\n" << endl;
 	system("PAUSE");
 

@@ -54,13 +54,8 @@ namespace Application {
 		}
 
 		void Update(ComPtr<ID3D12GraphicsCommandList> cmdList) {
+			// This is called once per frame for each dynamic entity
 			if(g_EntityResource) {
-				/* Test */
-				if (g_EntityResource->Name() == L"Cube") {
-					g_EntityResource->Transform(TRANSFORMATION_TYPE::ROTATE, TRANSFORM_DIRECTION::LEFT, TRANSFORM_HIERARCHY::WORLD);
-					g_EntityResource->Transform(TRANSFORMATION_TYPE::ROTATE, TRANSFORM_DIRECTION::RIGHT, TRANSFORM_HIERARCHY::LOCAL,5.0f);
-				}
-				/*     */
 				g_EntityResource->UpdateVertexBuffer();
 			}
 		}

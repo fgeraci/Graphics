@@ -13,6 +13,7 @@ namespace Application {
 	private:
 
 		Entity* g_SelectedEntity = nullptr;
+		std::vector<Entity*> g_Entities;
 		Gfx*	g_Graphics;
 		Point	g_LastPointerData;
 		
@@ -26,6 +27,7 @@ namespace Application {
 		void ProcessInput(INPUT_MAP_ACTION, double);
 		void ReadAsyncKeys();
 		bool IsKeyDown(VirtualKey);
+		void UpdateLogic();
 
 	public:
 

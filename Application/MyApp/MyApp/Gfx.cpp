@@ -15,12 +15,12 @@ Gfx::Gfx() {
 	InitializeMainCamera();
 	InitializePipeline();
 
+	
 	g_WorldEntity = std::make_unique<WorldEntity>();
-
-	// adding grid
-	AddPolygon(POLYGON_TYPE::GRID);
+	
 	CloseGlobalCommandList();
 	FlushGPUCommandsQueueAll();
+	
 	LOGMESSAGE(L"Gfx --> Initialization completed\n");
 }
 
@@ -656,7 +656,6 @@ void Gfx::CreateCameraConstantBuffers() {
 }
 
 void Gfx::CreatePSO(D3D12_PRIMITIVE_TOPOLOGY_TYPE type, ComPtr<ID3D12PipelineState>& state) {
-	LOGMESSAGE(L"\tSet up the Pipeline state\n");
 	// get resources
 	ComPtr<ID3DBlob> vertexShader = LoadFileBlob(L"VertexShader.cso");
 	ComPtr<ID3DBlob> pixelShader = LoadFileBlob(L"PixelShader.cso");
