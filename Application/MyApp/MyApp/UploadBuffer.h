@@ -60,6 +60,14 @@ namespace Application {
 			g_MappedData = nullptr;
 		}
 
+		void SetCBVDescriptor(D3D12_CONSTANT_BUFFER_VIEW_DESC d) {
+			g_CBVDesc = d;
+		}
+
+		D3D12_CONSTANT_BUFFER_VIEW_DESC CBVDescriptor() {
+			return g_CBVDesc;
+		}
+
 		ID3D12Resource* GetResource() const {
 			return g_Buffer.Get();
 		}
@@ -73,6 +81,7 @@ namespace Application {
 		UINT g_TotalSize = 0;
 		UINT g_UnitSize = 0;
 		bool g_IsConstantBuffer;
+		D3D12_CONSTANT_BUFFER_VIEW_DESC g_CBVDesc;
 		ComPtr<ID3D12Resource> g_Buffer = nullptr;
 		BYTE* g_MappedData = nullptr;
 

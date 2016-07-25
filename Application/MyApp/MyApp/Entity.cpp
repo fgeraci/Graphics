@@ -5,10 +5,10 @@
 using namespace Application;
 
 Entity::Entity() {
-	g_Position	= XMVectorZero();
-	g_Up		= XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-	g_Right		= XMVectorSet(1.0, 0.0f, 0.0f, 0.0f);
-	g_Forward	= XMVectorSet(0, 0, 1.0f, 0);
+	g_Position	= XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+	g_Up		= m_WorldUpVector;
+	g_Right		= m_WorldRightVector;
+	g_Forward	= m_WorldForwardVector;
 }
 
 #pragma region Transformations
@@ -18,6 +18,14 @@ void Entity::UpdateWorldMatrix() {
 	g_Forward = XMVector3Normalize(g_Forward);
 	g_Up = XMVector3Normalize(XMVector3Cross(g_Forward, g_Right));
 	g_Right = XMVector3Cross(g_Up, g_Forward);
+	g_WorldMatrix = XMMATRIX(g_Right, g_Up, g_Forward, g_Position);
+}
+
+void Entity::InitializeVerticesLists() {
+	g_VerticesNumber = static_cast<UINT>(g_Vertices.size());
+	g_IndicesNumber = static_cast<UINT>(g_Indices.size());
+	g_VBBytesSize = g_VerticesNumber * Polygon::StrideSize;
+	g_IBBytesSize = g_IndicesNumber * Polygon::IndexSize;
 }
 
 void Entity::Transform(TRANSFORMATION_TYPE t, TRANSFORM_DIRECTION d, TRANSFORM_HIERARCHY h, float mod) {
@@ -30,6 +38,10 @@ void Entity::Transform(TRANSFORMATION_TYPE t, TRANSFORM_DIRECTION d, TRANSFORM_H
 		Rotate(d, h, mod);
 		break;
 	}
+	
+	// Update world matrix
+	UpdateWorldMatrix();
+
 	// transform children one by one
 	// Translation is trivial
 	// rotation needs to determine: parent axis of rotation and position relative to parent
@@ -57,9 +69,9 @@ void Entity::Translate(TRANSFORM_DIRECTION d, TRANSFORM_HIERARCHY h, float speed
 		mainAxis = g_Up;
 	} else mainAxis = g_Right;
 	g_Position = XMVectorMultiplyAdd(delta, dir * mainAxis, g_Position);
-	for(UINT i = 0; i < g_VerticesNumber; ++i) {
+	/*for(UINT i = 0; i < g_VerticesNumber; ++i) {
 		Math::MultiplyAdd(speed, dir * mainAxis, (g_Vertices[i].position));
-	}
+	}*/
 }
 
 void Entity::Rotate(TRANSFORM_DIRECTION d, TRANSFORM_HIERARCHY h, float angle) {
@@ -116,7 +128,7 @@ void Entity::Rotate(TRANSFORM_DIRECTION d, TRANSFORM_HIERARCHY h, float angle) {
 		XMStoreFloat4x4(&t4, t);	
 	} else {
 		parentOffset = XMFLOAT3(0, 0, 0);
-		XMStoreFloat3(&parentOffset, g_Parent->Position());
+		//XMStoreFloat3(&parentOffset, g_Parent->Position());
 		g_Position = XMVector4Transform(g_Position, r);
 	}
 	XMStoreFloat4x4(&r4, r);
@@ -124,13 +136,9 @@ void Entity::Rotate(TRANSFORM_DIRECTION d, TRANSFORM_HIERARCHY h, float angle) {
 	for (UINT i = 0; i < g_VerticesNumber; ++i) {
 		if(local) {
 			// rotate the local vertices
-			g_LocalVertices[i].position = Math::Transform3(g_LocalVertices[i].position, r4);
-			// put them in the right spot in space
-			// if local, self vertices, otherwhise, correct the vertices with the parents position!
-			g_Vertices[i].position = Math::Transform3(
-				(parent ? Math::AddVectors3(g_LocalVertices[i].position, parentOffset) : g_LocalVertices[i].position),
-				t4);
+			g_Vertices[i].position = Math::Transform3(g_Vertices[i].position, r4);
 		} else {
+			// rotate around a world/parent axis
 			Math::RotateOnAxis(g_Vertices[i].position, r4, dir);
 		}
 	}
@@ -144,13 +152,16 @@ void Entity::InitializeUploadBuffer(ComPtr<ID3D12Device> dev) {
 	g_CPUVertexBuffer = g_UploadBuffer->GetResource();
 }
 
-void Entity::UpdateVertexBuffer() {
+void Entity::UpdateBuffers() {
 	if(g_Dynamic) {
 		g_UploadBuffer->WriteToBuffer(g_Vertices[0], g_StartVertexLocation);
 		g_GPUVertexBuffer.Reset();
 		g_GPUVertexBuffer = g_UploadBuffer->GetResource();
 		g_VertexBufferView.BufferLocation = g_GPUVertexBuffer->GetGPUVirtualAddress();
 		g_Dirty = false;
+		ObjectConstatntData data;
+		XMStoreFloat4x4(&data.gWorld, XMMatrixTranspose(g_WorldMatrix));
+		g_ConstantBuffer->WriteToBuffer(data, 0);
 	}
 }
 
@@ -208,12 +219,29 @@ void Entity::SetIBView(D3D12_INDEX_BUFFER_VIEW p) {
 	g_IndexBufferView = p;
 }
 
+void Entity::InitConstantBuffer(ComPtr<ID3D12Device> dev) {
+	
+	// store the pointer
+	g_ConstantBuffer = std::make_unique<UploadBuffer<ObjectConstatntData>>(dev, 1, true);
+
+	// Initialize the world matrix here in case this is 
+	// a non-dynamic per frame object(such as the grid)
+	UpdateWorldMatrix();
+	ObjectConstatntData data;
+	XMStoreFloat4x4(&data.gWorld, XMMatrixTranspose(g_WorldMatrix));
+	g_ConstantBuffer->WriteToBuffer(data, 0);
+}
+
 D3D12_VERTEX_BUFFER_VIEW Entity::VBView() {
 	return g_VertexBufferView;
 }
 
 D3D12_INDEX_BUFFER_VIEW Entity::IBView() {
 	return g_IndexBufferView;
+}
+
+UploadBuffer<ObjectConstatntData>* Entity::ConstantBuffer() {
+	return g_ConstantBuffer.get();
 }
 
 D3D12_PRIMITIVE_TOPOLOGY Entity::Topology() {

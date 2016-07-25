@@ -49,11 +49,12 @@ namespace Application {
 		// Default Values
 		int g_CurrentBackbuffer = 0;
 		int g_CurrentMSAaLevel = 4;
+		int g_ConstantBuffers = 2; // one for per frame / one for per object
 		bool g_DebugEnabled = false;
 		UINT64 g_CurrentFence = 0;
 		XMVECTORF32 g_BackBufferColor = DirectX::Colors::Black;
 		XMFLOAT4 g_MainCameraInitialPosition = DirectX::XMFLOAT4(0.0f, 4.0f, -15.0f, 1.0f);
-		static const bool g_UseGPU = false;
+		static const bool g_UseGPU = true;
 		static const bool g_RestrictToPrimaryOutput = false;
 			// Multisample is not supported in the swap chain, it need to be created on a separate render target
 		static const bool m_MsaaEnabled = false;
@@ -67,13 +68,14 @@ namespace Application {
 		std::unique_ptr<Entity> g_WorldEntity = nullptr;
 
 		// Buffers and command lists
-		UploadBuffer<ObjectConstantData>* g_MainCameraBuffer = nullptr;
-		CommandListHelper				  g_EntityCommandList;
+		UploadBuffer<FrameConstantData>*			g_MainPerFrameBuffer = nullptr;
+		CommandListHelper							g_EntityCommandList;
+		std::vector<ComPtr<ID3D12DescriptorHeap>>   g_CBVDescriptorsHeaps;
 		// D3D Resources
 			// Fresources will be updated once per draw call and pushed to the CPU. The CPU will be blocked from continuing
 			// if the GPU hasn't caught up with it, ideally, GPU utilization has to be maxed out, while CPU can idle.
 			// The more FrameResources we have, the further ahead the CPU can process frames and submit CmdAllocators to it.
-		std::vector<FrameResources> g_FrameResources;
+		std::vector<FrameResources*> g_FrameResources;
 		int g_CurrentFrameResources = -1;
 
 
@@ -108,11 +110,12 @@ namespace Application {
 		
 		// For Draw Calls
 		void UpdateCamera();
+		void UpdateFrameConstantData();
 		void UpdateGrid();
 		
 		// Native properties
 		UINT g_MsaaQualityLevels;
-		UINT g_RtvDescriptorSize, g_DsvDescriptorSize, g_SrvDescriptorSize;
+		UINT g_RtvDescriptorSize, g_DsvDescriptorSize, g_CbvSrvDescriptorSize;
 		UINT g_ClientWidth;
 		UINT g_ClientHeight;
 		
@@ -124,7 +127,7 @@ namespace Application {
 		void InitializeEntityCommandList();
 
 		// Utility
-		IDXGIAdapter1* GetGPU();
+		ComPtr<IDXGIAdapter1> GetGPU();
 		void GetClientOutputProperties();
 		void CheckAntialisngSupport();
 		void CreateDescriptorHeaps();
@@ -138,11 +141,14 @@ namespace Application {
 		void CloseEntitiesCommandLists();
 		void CreateSwapChain();
 		void CreateInputLayout();
-		void CreateCameraConstantBuffers();
+		void AddFrameConstantBuffers(ComPtr<ID3D12DescriptorHeap>);
 		void CreateRootSignature();
 		void CreatePSO(D3D12_PRIMITIVE_TOPOLOGY_TYPE, ComPtr<ID3D12PipelineState>&);
 			// creates a generic buffer - ID3DResource for index and vertex buffers
 		ComPtr<ID3D12Resource> CreateDefaultBuffer(UINT,const void*, ComPtr<ID3D12Resource>&);
 		ComPtr<ID3DBlob> LoadFileBlob(const std::wstring&);
+			// create a CBV descriptor with the standard per frame descriptor added
+			// to the heap and returns its index in the vector
+		int AddCBVDescriptorHeap();
 	};
 }

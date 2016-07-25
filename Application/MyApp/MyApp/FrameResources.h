@@ -11,25 +11,28 @@ namespace Application {
 	
 	private:
 		
+		UINT g_FrameResourceIndex;
+		UINT g_CBVDescriptorHeapIndex;
+
 		ComPtr<ID3D12CommandAllocator> g_CmdAllocator;
 		
 		// Beginning Fence
 		UINT64 g_CurrentFence;
 		
 		// Resources
-		UploadBuffer<ObjectConstantData>* g_ConstantBuffer;
 		Entity* g_EntityResource;
 
 	public:
 
-		FrameResources(ComPtr<ID3D12Device> device, UINT64 fence) {
+		FrameResources(ComPtr<ID3D12Device> device, UINT64 fence, UINT index) {
 			g_CurrentFence = fence;
 			DX::ThrowIfFailed(device->CreateCommandAllocator(
 				D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&g_CmdAllocator))
 			);
+			g_FrameResourceIndex = index;
 		}
 
-		FrameResources(ComPtr<ID3D12Device> device, UINT64 fence, Entity* e) : FrameResources(device,fence) {
+		FrameResources(ComPtr<ID3D12Device> device, UINT64 fence, Entity* e, UINT index) : FrameResources(device,fence,index) {
 			g_EntityResource = e;
 		}
 
@@ -45,6 +48,18 @@ namespace Application {
 			return g_EntityResource;
 		}
 
+		UINT Index() {
+			return g_FrameResourceIndex;
+		}
+
+		UINT CBVDescriptorIndex() {
+			return g_FrameResourceIndex;
+		}
+
+		void SetCBVDescriptorIndex(UINT i) {
+			g_CBVDescriptorHeapIndex = i;
+		}
+
 		UINT64 Fence() {
 			return g_CurrentFence;
 		}
@@ -56,7 +71,7 @@ namespace Application {
 		void Update(ComPtr<ID3D12GraphicsCommandList> cmdList) {
 			// This is called once per frame for each dynamic entity
 			if(g_EntityResource) {
-				g_EntityResource->UpdateVertexBuffer();
+				g_EntityResource->UpdateBuffers();
 			}
 		}
 	};

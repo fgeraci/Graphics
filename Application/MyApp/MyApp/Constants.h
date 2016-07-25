@@ -22,7 +22,9 @@ namespace Application {
 	const static int		m_DownScreenSide	=  1;
 	const static int		m_PointerInvert		=  1;		// 1 --> false
 	const static float		m_PointerSens		=  0.06f;
-	const static float		m_DepthOfView		=  1000.0f;
+	const static float		m_ViewAngleVertical =  0.25f;
+	const static float		m_DepthOfViewNearZ	=  0.25f;
+	const static float		m_DepthOfViewFarZ	=  1000.0f;
 
 	// Graphics		- Gfx
 	const static XMVECTOR	m_WorldUpVector		 = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);

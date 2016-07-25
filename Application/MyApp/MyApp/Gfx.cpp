@@ -35,7 +35,7 @@ void Gfx::Draw() {
 	if(g_FrameResources.size() > 0) {
 		/* Handle current FrameResources */
 		g_CurrentFrameResources = (g_CurrentFrameResources + 1) % g_FrameResources.size();
-		fr = &g_FrameResources[g_CurrentFrameResources];
+		fr = g_FrameResources[g_CurrentFrameResources];
 		curAllocator = fr->CommandAllocator();
 		g_CurrentFence = g_Fence->GetCompletedValue();
 		if(g_CurrentFence < fr->Fence()) {
@@ -67,11 +67,29 @@ void Gfx::Draw() {
 	// Update view every frame
 	UpdateCamera();
 
+	// Update frame's constant data
+	UpdateFrameConstantData();
+
+	
+
 	// Draw all of them
 	int allEntities = static_cast<int>(g_FrameResources.size());
 	for(int i = 0; i < allEntities; ++i) {
-		g_FrameResources[i].Update(g_CommandList);
-		Entity* e = g_FrameResources[i].Entity();
+		
+		FrameResources* currFr = g_FrameResources[i];
+		currFr->Update(g_CommandList);
+		Entity* e = g_FrameResources[i]->Entity();
+		ComPtr<ID3D12DescriptorHeap> heap = g_CBVDescriptorsHeaps[currFr->CBVDescriptorIndex()];
+		
+		// Set the buffer in the root signature descriptors
+		ComPtr<ID3D12DescriptorHeap> descHeaps[] = { heap.Get() };
+		g_CommandList->SetDescriptorHeaps(_countof(descHeaps), descHeaps->GetAddressOf());
+
+		g_CommandList->SetGraphicsRootSignature(g_RootSignature.Get());
+
+		CD3DX12_GPU_DESCRIPTOR_HANDLE cbvDescHandle(heap->GetGPUDescriptorHandleForHeapStart());
+		g_CommandList->SetGraphicsRootDescriptorTable(0, cbvDescHandle);
+
 		if(e) {
 			if (e->IsEnabled() && e->IsDrawable()) {
 
@@ -88,6 +106,10 @@ void Gfx::Draw() {
 				// select the proper pilepile based on the required properties- this is NOT ideal per draw call, but will do for now.
 				g_CommandList->SetPipelineState(
 					e->Topology() == D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE ? g_PipelineStateLine.Get() : g_PipelineStateTriangle.Get());
+
+				// Select the proper subresource in the heap
+				cbvDescHandle.Offset(1, g_CbvSrvDescriptorSize);
+				g_CommandList->SetGraphicsRootDescriptorTable(1, cbvDescHandle);
 
 				g_CommandList->DrawIndexedInstanced(e->IndicesNumber(), 1, 0, 0, 0);
 			}
@@ -134,7 +156,7 @@ void Gfx::InitializeDirect3D() {
 	LOGMESSAGE(L"2. Create Device\n");
 	try {
 		ThrowIfFailed(D3D12CreateDevice(
-			(g_UseGPU ? GetGPU() : nullptr),
+			(g_UseGPU ? GetGPU().Get() : nullptr),
 			D3D_FEATURE_LEVEL_11_0,
 			IID_PPV_ARGS(&g_Device)
 		));
@@ -161,7 +183,7 @@ void Gfx::InitializeDirect3D() {
 		// Depth/Stencil
 	g_DsvDescriptorSize = g_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 		// Buffers, Shaders,Unordered Resources
-	g_SrvDescriptorSize = g_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	g_CbvSrvDescriptorSize = g_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	LOGMESSAGE(L"5. Check MSAA quality support levels and output information\n");
 	CheckAntialisngSupport();
@@ -197,7 +219,7 @@ void Gfx::InitializeDirect3D() {
 void Gfx::InitializeMainCamera() {
 	g_MainCamera = std::make_unique<Camera>(true, g_MainCameraInitialPosition);
 	g_MainCamera->InitializeUploadBuffer(g_Device);
-	g_MainCameraBuffer = g_MainCamera->GetUploadBuffer();
+	g_MainPerFrameBuffer = g_MainCamera->GetUploadBuffer();
 }
 
 void Gfx::InitializeEntityCommandList() {
@@ -222,7 +244,7 @@ Entity* Gfx::MainCamera() {
 
 /* Utility */
 
-IDXGIAdapter1* Gfx::GetGPU() {
+ComPtr<IDXGIAdapter1> Gfx::GetGPU() {
 	if (g_DxgiFactory == nullptr) return nullptr;
 	ComPtr<IDXGIAdapter1> adapter = nullptr;
 	ComPtr<IDXGIAdapter1> gpuAdapter = nullptr;
@@ -237,7 +259,8 @@ IDXGIAdapter1* Gfx::GetGPU() {
 		}
 		i++;
 	}
-	return gpuAdapter.Get();
+	adapter = nullptr;
+	return gpuAdapter;
 }
 
 void Gfx::CreateSwapChain() {
@@ -341,7 +364,8 @@ void Gfx::CreateDescriptorHeaps() {
 	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
 	cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;	// shader need access to it!
-	cbvHeapDesc.NumDescriptors = 1;
+	// One for the frame-wise resources, another one for each object to set per draw
+	cbvHeapDesc.NumDescriptors = g_ConstantBuffers;
 	cbvHeapDesc.NodeMask = 0;
 
 
@@ -503,23 +527,49 @@ void Gfx::UpdateCamera() {
 		XMVECTOR up = Application::m_WorldUpVector;
 
 		// compute projection matrix
-		XMMATRIX world = g_MainCamera->WorldMatrix();
-		XMMATRIX view = XMMatrixLookAtLH(position, target, up);
-		XMMATRIX proj = XMMatrixPerspectiveFovLH(0.25f*XM_PI, static_cast<float>(g_ClientWidth) / g_ClientHeight, 0.25f, m_DepthOfView);
-		g_MainCamera->SetWorldViewProject(world * view * proj);
+		g_MainCamera->SetView(XMMatrixLookAtLH(position, target, up));
+		g_MainCamera->SetProjection(XMMatrixPerspectiveFovLH(
+			m_ViewAngleVertical*XM_PI, 
+			static_cast<float>(g_ClientWidth) / g_ClientHeight, 
+			m_DepthOfViewNearZ, m_DepthOfViewFarZ));
+		g_MainCamera->SetViewProject(g_MainCamera->View() * g_MainCamera->Projection());
 	}
+}
 
-	// update CBV buffer
-	ObjectConstantData camera;
-	XMStoreFloat4x4(&camera.WorldViewProj, XMMatrixTranspose(g_MainCamera->WorldViewProject()));
-	g_MainCamera->GetUploadBuffer()->WriteToBuffer(camera, 0);
+void Gfx::UpdateFrameConstantData() {
+	
+	/* 
+		Due to the fact DirectX is ROW-MAJOR (matrices in memroy),
+		we need to transpose the matrices. This does not affect the
+		underlying math.
+	*/
 
-	ComPtr<ID3D12DescriptorHeap> descHeaps[] = { g_CbvDescHeap.Get() };
-	g_CommandList->SetDescriptorHeaps(_countof(descHeaps), descHeaps->GetAddressOf());
-	g_CommandList->SetGraphicsRootSignature(g_RootSignature.Get());
+	// update frame's CBV buffer
+	FrameConstantData frameBuffer;
+	// view
+	XMStoreFloat4x4(&frameBuffer.View, g_MainCamera->View());
+	XMStoreFloat4x4(&frameBuffer.InvView, 
+		XMMatrixInverse(&XMMatrixDeterminant(g_MainCamera->View()),g_MainCamera->View()));					// the inverse is the transposed of the iverse
+	// proj
+	XMStoreFloat4x4(&frameBuffer.Proj, g_MainCamera->Projection());
+	XMStoreFloat4x4(&frameBuffer.InvProj,
+		XMMatrixInverse(&XMMatrixDeterminant(g_MainCamera->Projection()), g_MainCamera->Projection()));
+	// viewProj
+	XMStoreFloat4x4(&frameBuffer.ViewProj, XMMatrixTranspose(g_MainCamera->ViewProject()));
+	XMStoreFloat4x4(&frameBuffer.InvViewProj,
+		XMMatrixInverse(&XMMatrixDeterminant(g_MainCamera->ViewProject()), g_MainCamera->ViewProject()));
+	// cbPadding
+	frameBuffer.cbPerObjectPad1 = 0.0f;
+	// Eye Position
+	XMStoreFloat3(&frameBuffer.EyePosW,g_MainCamera->Position());
 
-	CD3DX12_GPU_DESCRIPTOR_HANDLE cbvDescHandle(g_CbvDescHeap->GetGPUDescriptorHandleForHeapStart());
-	g_CommandList->SetGraphicsRootDescriptorTable(0, cbvDescHandle);
+	frameBuffer.RTSize		= XMFLOAT2(static_cast<float>(g_ClientWidth), static_cast<float>(g_ClientHeight));
+	frameBuffer.InvRTSize	= XMFLOAT2(1.0f / g_ClientWidth, 1.0f / g_ClientHeight);
+
+	frameBuffer.NearZ		= m_DepthOfViewNearZ;
+	frameBuffer.FarZ		= m_DepthOfViewFarZ;
+
+	g_MainCamera->GetUploadBuffer()->WriteToBuffer(frameBuffer, 0);
 }
 
 void Gfx::UpdateGrid() {
@@ -558,11 +608,13 @@ Entity* Gfx::AddPolygon(POLYGON_TYPE type, bool dyn) {
 	ComPtr<ID3D12Resource> tmpVUBuffer = nullptr;
 	ComPtr<ID3D12Resource> tmpVBuffer = nullptr;
 
+	p->InitConstantBuffer(g_Device);
+
 	if(p->IsDynamic()) {
 		p->InitializeUploadBuffer(g_Device);
 		tmpVUBuffer = p->CPUVertexBuffer();
 		tmpVBuffer = p->CPUVertexBuffer();
-		p->UpdateVertexBuffer();
+		p->UpdateBuffers();
 	} else tmpVBuffer = CreateDefaultBuffer(p->VBBytesSize(), reinterpret_cast<void*>(p->Vertices().data()), tmpVUBuffer);
 	
 	totalVertices += p->VerticesNumber();
@@ -595,8 +647,27 @@ Entity* Gfx::AddPolygon(POLYGON_TYPE type, bool dyn) {
 	tmpVUBuffer = tmpVBuffer = tmpIUBuffer = tmpIBuffer = nullptr;
 
 	// add it to the queue
-	FrameResources fr(g_Device, 0, p);
+	FrameResources* fr = new FrameResources(g_Device, 0, p, static_cast<int>(g_FrameResources.size()));
 	g_FrameResources.push_back(fr);
+
+	/* Set the Constant Buffer in the Descriptors Heap */
+	int heapIndex = g_ConstantBuffers - 1;
+	D3D12_GPU_VIRTUAL_ADDRESS address = p->ConstantBuffer()->GetResource()->GetGPUVirtualAddress();
+	int bufferSize = p->ConstantBuffer()->TotalSize();
+
+	// Initialize its CBV descriptor heap
+	int index = AddCBVDescriptorHeap();
+	fr->SetCBVDescriptorIndex(index);
+	ComPtr<ID3D12DescriptorHeap> heap = g_CBVDescriptorsHeaps[index];
+	AddFrameConstantBuffers(heap);
+
+	D3D12_CONSTANT_BUFFER_VIEW_DESC d;
+	d.SizeInBytes = bufferSize;
+	d.BufferLocation = address;
+
+	// offset the first per frame descriptor
+	CD3DX12_CPU_DESCRIPTOR_HANDLE h(heap->GetCPUDescriptorHandleForHeapStart(), 1, g_CbvSrvDescriptorSize);
+	g_Device->CreateConstantBufferView(&d, h);
 
 	// Close the entities queue
 	CloseEntitiesCommandLists();
@@ -642,17 +713,38 @@ void Gfx::CreateInputLayout() {
 	};
 }
 
-void Gfx::CreateCameraConstantBuffers() {
+void Gfx::AddFrameConstantBuffers(ComPtr<ID3D12DescriptorHeap> heap) {
 	LOGMESSAGE(L"\t\tCreate the main camera constant buffer\n");
+	
 	// this address needs to be offset if we want to point forward in the heap
-	UINT offset = 0;
-	D3D12_GPU_VIRTUAL_ADDRESS cbAddress = g_MainCameraBuffer->GetResource()->GetGPUVirtualAddress();
-	cbAddress += offset * g_MainCameraBuffer->UnitSize();
+	D3D12_GPU_VIRTUAL_ADDRESS cbAddress = g_MainPerFrameBuffer->GetResource()->GetGPUVirtualAddress();
+	
 	D3D12_CONSTANT_BUFFER_VIEW_DESC cbvd = {};
 	cbvd.BufferLocation = cbAddress;
-	cbvd.SizeInBytes = g_MainCameraBuffer->TotalSize();
+	cbvd.SizeInBytes = g_MainPerFrameBuffer->TotalSize();
+	
+	// no offset in the heap
 	g_Device->CreateConstantBufferView(&cbvd,
-		g_CbvDescHeap->GetCPUDescriptorHandleForHeapStart());
+		heap->GetCPUDescriptorHandleForHeapStart());
+}
+
+int Gfx::AddCBVDescriptorHeap() {
+	
+	ComPtr<ID3D12DescriptorHeap> heap = nullptr;
+	
+	D3D12_DESCRIPTOR_HEAP_DESC cbvHeaDesc;
+	cbvHeaDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	cbvHeaDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	cbvHeaDesc.NumDescriptors = g_CbvSrvDescriptorSize;
+	cbvHeaDesc.NodeMask = 0;
+	g_Device->CreateDescriptorHeap(&cbvHeaDesc, IID_PPV_ARGS(&heap));
+	
+	g_CBVDescriptorsHeaps.push_back(heap);
+
+	// Set per frame (permanent) descriptors in the heap
+	CD3DX12_CPU_DESCRIPTOR_HANDLE h(heap->GetCPUDescriptorHandleForHeapStart());
+
+	return static_cast<int>(g_CBVDescriptorsHeaps.size() - 1);
 }
 
 void Gfx::CreatePSO(D3D12_PRIMITIVE_TOPOLOGY_TYPE type, ComPtr<ID3D12PipelineState>& state) {
@@ -684,26 +776,45 @@ void Gfx::CreatePSO(D3D12_PRIMITIVE_TOPOLOGY_TYPE type, ComPtr<ID3D12PipelineSta
 void Gfx::CreateRootSignature() {
 
 	LOGMESSAGE(L"\t\tCreate the Root Signature to register the Constant Buffer to the Pipeline registers\n");
+	
 	// Create the Root Parameter and the Descriptor Table, bind the Descriptor table to the parameter
-	CD3DX12_ROOT_PARAMETER rootParams[1];		// 1 single parameter for the Root Signature
-	CD3DX12_DESCRIPTOR_RANGE descriptorTable;
-	descriptorTable.Init(
+	CD3DX12_ROOT_PARAMETER rootParams[2];		// 1 single parameter for the Root Signature
+	
+	// Create descriptor tables
+	CD3DX12_DESCRIPTOR_RANGE descriptorTablePerFrame;
+	CD3DX12_DESCRIPTOR_RANGE descriptorTablePerObject;
+
+	descriptorTablePerFrame.Init(
 		D3D12_DESCRIPTOR_RANGE_TYPE_CBV,		// Type of element to be described in the table
 		1,										// how many
 		0										// to which register (b0)
 	);
+
+	descriptorTablePerObject.Init(
+		D3D12_DESCRIPTOR_RANGE_TYPE_CBV,		// Type of element to be described in the table
+		1,										// how many
+		1										// to which register (b1)
+	);
+
 	rootParams[0].InitAsDescriptorTable(
 		1,										// Number of tables
-		&descriptorTable						// Head of array of tables
+		&descriptorTablePerFrame				// Head of array of tables
+	);											// Default flag --> D3D12_SHADER_VISIBILITY_ALL
+
+	rootParams[1].InitAsDescriptorTable(
+		1,										// Number of tables
+		&descriptorTablePerObject				// Head of array of tables
 	);
+
 	// Describe the Root Signature
 	CD3DX12_ROOT_SIGNATURE_DESC rootSignDesc(
-		1,										// Number of parameters
+		_countof(rootParams),					// Number of parameters
 		rootParams,								// The actual parameters array
 		0,										// static samplers (???)				 
 		nullptr,								// static sampler description
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT // Flag to allow access
 	);
+
 	// Serialize and create the Root Signature
 	ComPtr<ID3DBlob> serializedRootSign = nullptr;
 	ComPtr<ID3DBlob> errorBlob = nullptr;
@@ -712,7 +823,8 @@ void Gfx::CreateRootSignature() {
 		OutputDebugStringA((char*)errorBlob->GetBufferPointer());
 	}
 	ThrowIfFailed(g_Device->CreateRootSignature(
-		0, serializedRootSign->GetBufferPointer(),
+		0, 
+		serializedRootSign->GetBufferPointer(),
 		serializedRootSign->GetBufferSize(),
 		IID_PPV_ARGS(&g_RootSignature)));
 }
@@ -800,7 +912,7 @@ void Gfx::InitializePipeline() {
 	CreateInputLayout();
 
 	LOGMESSAGE(L"\tCreate main camera buffers\n");
-	CreateCameraConstantBuffers();
+	AddFrameConstantBuffers(g_CbvDescHeap);
 
 	LOGMESSAGE(L"\tCreate the Root Signature\n");
 	CreateRootSignature();

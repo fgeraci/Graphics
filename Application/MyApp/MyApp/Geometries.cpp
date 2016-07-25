@@ -42,14 +42,10 @@ Cube::Cube(bool d) : Polygon(d) {
 		4, 0, 3,
 		4, 3, 7
 	};
-	g_LocalVertices = g_Vertices;
+	g_Name = L"Cube";
 	g_PolygonType = POLYGON_TYPE::CUBE;
 	g_Topology = D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	g_VerticesNumber = static_cast<UINT>(g_Vertices.size());
-	g_IndicesNumber = static_cast<UINT>(g_Indices.size());
-	g_VBBytesSize = g_VerticesNumber * Polygon::StrideSize;
-	g_IBBytesSize = g_IndicesNumber * Polygon::IndexSize;
-	g_Name = L"Cube";
+	Entity::InitializeVerticesLists();
 }
 
 #pragma endregion Cube
@@ -62,14 +58,10 @@ Grid::Grid() : Polygon() {
 	The stepping should be based on the screen width/height ratio.
 	*/
 	PopulateGrid();
-	g_LocalVertices = g_Vertices;
+	g_Name = L"Grid";
 	g_PolygonType = POLYGON_TYPE::GRID;
 	g_Topology = D3D_PRIMITIVE_TOPOLOGY_LINELIST;
-	g_VerticesNumber = static_cast<UINT>(g_Vertices.size());
-	g_IndicesNumber = static_cast<UINT>(g_Indices.size());
-	g_VBBytesSize = g_VerticesNumber * Polygon::StrideSize;
-	g_IBBytesSize = g_IndicesNumber * Polygon::IndexSize;
-	g_Name = L"Grid";
+	Entity::InitializeVerticesLists();
 }
 
 void Grid::PopulateGrid() {

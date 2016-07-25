@@ -23,7 +23,6 @@ namespace Application {
 		Entity* g_Parent = nullptr;
 
 		std::vector<Vertex> g_Vertices;
-		std::vector<Vertex> g_LocalVertices;
 		std::vector<uint16_t> g_Indices;
 		std::wstring g_Name;
 		D3D12_PRIMITIVE_TOPOLOGY g_Topology;
@@ -40,6 +39,7 @@ namespace Application {
 		D3D12_INDEX_BUFFER_VIEW g_IndexBufferView;
 		ComPtr<ID3D12Resource> g_GPUVertexBuffer, g_CPUVertexBuffer;
 		ComPtr<ID3D12Resource> g_GPUIndexBuffer, g_CPUIndexBuffer;
+		std::unique_ptr<UploadBuffer<ObjectConstatntData>> g_ConstantBuffer = nullptr;
 		std::unique_ptr<UploadBuffer<Vertex>> g_UploadBuffer = nullptr;
 
 		virtual void UpdateWorldMatrix();
@@ -57,7 +57,7 @@ namespace Application {
 		void SetDirty(bool d) { g_Dirty = d; }
 
 		virtual void InitializeUploadBuffer(ComPtr<ID3D12Device>);
-		virtual void UpdateVertexBuffer();
+		virtual void UpdateBuffers();
 
 		virtual XMVECTOR Position()		{ return g_Position; }
 		virtual XMVECTOR Up()			{ return g_Up; }
@@ -82,11 +82,13 @@ namespace Application {
 		UINT StartIndexLocation();
 		std::vector<Vertex> Vertices();
 		std::vector<uint16_t> Indices();
+		void InitConstantBuffer(ComPtr<ID3D12Device> dev);
 		void SetVBView(D3D12_VERTEX_BUFFER_VIEW p);
 		void SetIBView(D3D12_INDEX_BUFFER_VIEW p);
 		D3D12_VERTEX_BUFFER_VIEW VBView();
 		D3D12_INDEX_BUFFER_VIEW IBView();
+		UploadBuffer<ObjectConstatntData>* ConstantBuffer();
 		D3D12_PRIMITIVE_TOPOLOGY Topology();
-
+		void InitializeVerticesLists();
 	};
 }

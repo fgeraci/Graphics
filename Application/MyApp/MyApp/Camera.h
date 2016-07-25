@@ -12,10 +12,13 @@ namespace Application {
 	
 	private:
 		
-		std::unique_ptr<UploadBuffer<ObjectConstantData>> g_UploadBuffer = nullptr;
+		std::unique_ptr<UploadBuffer<FrameConstantData>> g_UploadBuffer = nullptr;
 		bool g_IsPrimary;
-		XMMATRIX g_WorldViewProj;
+		
+		XMMATRIX g_View;
+		XMMATRIX g_Projection;
 		XMMATRIX g_WorldView;
+		XMMATRIX g_ViewProj;
 		
 	public:
 		
@@ -36,11 +39,12 @@ namespace Application {
 		}
 
 		void InitializeUploadBuffer(ComPtr<ID3D12Device> dev) override {
-			g_UploadBuffer = std::make_unique<UploadBuffer<ObjectConstantData>>(dev, 1, true);
+			g_UploadBuffer = std::make_unique<UploadBuffer<FrameConstantData>>(dev, 1, true);
+			InitConstantBuffer(dev);
 			g_CPUVertexBuffer = g_UploadBuffer->GetResource();
 		}
 
-		UploadBuffer<ObjectConstantData>* GetUploadBuffer() {
+		UploadBuffer<FrameConstantData>* GetUploadBuffer() {
 			return g_UploadBuffer.get();
 		}
 
@@ -55,12 +59,29 @@ namespace Application {
 
 		bool IsPrimary()		{ return g_IsPrimary; }
 
-		XMMATRIX WorldViewProject() {
-			return g_WorldViewProj;
+
+		XMMATRIX View() {
+			return g_View;
+		}
+		
+		XMMATRIX Projection() {
+			return g_Projection;
 		}
 
-		void SetWorldViewProject(XMMATRIX m) {
-			g_WorldViewProj = m;
+		XMMATRIX ViewProject() {
+			return g_ViewProj;
+		}
+
+		void SetView(XMMATRIX m) {
+			g_View = m;
+		}
+
+		void SetProjection(XMMATRIX m) {
+			g_Projection = m;
+		}
+
+		void SetViewProject(XMMATRIX m) {
+			g_ViewProj = m;
 		}
 
 		void Camera::Rotate(TRANSFORM_DIRECTION d, TRANSFORM_HIERARCHY h, float angle) override {

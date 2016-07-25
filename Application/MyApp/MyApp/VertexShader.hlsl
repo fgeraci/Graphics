@@ -1,7 +1,25 @@
 
-cbuffer cbPerObject : register(b0)
+cbuffer cbPerFrame : register(b0)
 {
-	float4x4 gWorldViewProj;							// is read from a constant buffer
+	float4x4	gView;
+	float4x4	gInvView;
+	float4x4	gProj;
+	float4x4	gInvProj;
+	float4x4	gViewProj;
+	float4x4	gInvViewProj;
+	float		cbPerObjectPad1;
+	float3		gEyePosW;
+	float2		gRTSize;
+	float2		gInvRTSize;
+	float		gNearZ;
+	float		gFarZ;
+	float		gTotalTime;
+	float		gDeltaTime;
+};
+
+cbuffer cbPerObject : register(b1)
+{
+	float4x4	gWorld;
 };
 
 struct VertexIn {
@@ -19,10 +37,12 @@ VertexOut VS(VertexIn vIn) {
 
 	VertexOut vOut;
 
-	// Transform vertex to homegeneous clip space
-	vOut.oPosH = mul(float4(vIn.iPosL, 1.0f),			// constructs a point - note w = 1 - (iPosL.<x,y,z> , 1.0)
-					gWorldViewProj);					// multiples by gWorldViewProj matrix
+	// Transform object's local vertex into world space, 
+	// and then into homogeneous clip space
 
+	float4 pos = mul(float4(vIn.iPosL, 1.0f),			// constructs a point - note w = 1 - (iPosL.<x,y,z> , 1.0)
+					gWorld);							// multiples by gWorldViewProj matrix
+	vOut.oPosH = mul(pos, gViewProj);
 	// Pass vertex color
 	vOut.oColor = vIn.iColor;
 

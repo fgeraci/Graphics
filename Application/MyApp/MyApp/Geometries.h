@@ -26,7 +26,7 @@ namespace Application {
 		static const DXGI_FORMAT IndexFormat = DXGI_FORMAT_R16_UINT;
 		static const UINT IndexSize = sizeof(uint16_t);
 		static const UINT StrideSize = sizeof(Vertex);
-		static const UINT DefaultGridSize = 50;
+		static const UINT DefaultGridSize = 70;
 
 	protected:
 
