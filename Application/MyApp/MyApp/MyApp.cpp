@@ -33,8 +33,9 @@ MyApp::MyApp() {
 	g_Entities[3]->SetParent(g_Graphics->WorldEntityParent());
 	g_Entities[3]->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::BACKWARDS, TRANSFORM_HIERARCHY::LOCAL, 5.0f);
 	g_Entities[3]->Transform(TRANSFORMATION_TYPE::TRANSLATE, TRANSFORM_DIRECTION::UP, TRANSFORM_HIERARCHY::WORLD);
+	g_Entities.push_back(g_Graphics->AddPolygon(POLYGON_TYPE::CYLINDER, true));
 	// add grid
-	g_Entities.push_back(g_Graphics->AddPolygon(POLYGON_TYPE::GRID, true));
+	g_Entities.push_back(g_Graphics->AddPolygon(POLYGON_TYPE::GRID, false));
 }
 
 void MyApp::Update(Ticker* t) {

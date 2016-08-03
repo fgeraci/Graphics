@@ -602,6 +602,9 @@ Entity* Gfx::AddPolygon(POLYGON_TYPE type, bool dyn) {
 		g_Grid = std::make_unique<Grid>(dyn);
 		p = g_Grid.get();
 		break;
+	case CYLINDER:
+		p = new Cylinder(dyn);
+		break;
 	}
 	// Create the Vertices buffer
 		
@@ -714,7 +717,6 @@ void Gfx::CreateInputLayout() {
 }
 
 void Gfx::AddFrameConstantBuffers(ComPtr<ID3D12DescriptorHeap> heap) {
-	LOGMESSAGE(L"\t\tCreate the main camera constant buffer\n");
 	
 	// this address needs to be offset if we want to point forward in the heap
 	D3D12_GPU_VIRTUAL_ADDRESS cbAddress = g_MainPerFrameBuffer->GetResource()->GetGPUVirtualAddress();

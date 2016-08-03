@@ -8,7 +8,8 @@ namespace Application {
 	
 	enum POLYGON_TYPE {
 		GRID = 0,
-		CUBE
+		CUBE,
+		CYLINDER
 	};
 
 	class Polygon : public Entity {
@@ -102,6 +103,28 @@ namespace Application {
 		Grid(int s, bool d) : Grid(s) { g_Dynamic = d; }
 		Grid(int s, DirectX::XMFLOAT4 c) : Grid(s) { g_Color = c; }
 		Grid(int s, bool d, DirectX::XMFLOAT4 c) : Grid(s, d) { g_Color = c; }
+
+	};
+
+	class Cylinder sealed : public Polygon {
+	
+	private:
+
+		XMFLOAT4 g_Color = XMFLOAT4(Colors::Green);
+		XMFLOAT4 g_ColorEnds = XMFLOAT4(Colors::DarkGreen);
+		int	  g_Stacks = 8;
+		float g_StackHeight = 0.2f;
+		float g_BottomRadius = 1.0f;
+		float g_TopRadius = 0.5f;
+		int   g_Slices = 16;
+	
+		void PopulateCylinder();
+
+	public:
+
+		Cylinder();
+		Cylinder(bool d) : Cylinder() { g_Dynamic = d; }
+		Cylinder(int,float,float,int) { };
 
 	};
 }
