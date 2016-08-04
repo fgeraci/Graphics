@@ -30,11 +30,11 @@ namespace Application {
 		void Terminate();
 
 		void ClientWidht(UINT w) {
-			g_ClientWidth = w;
+			g_ClientWidth = static_cast<UINT>(w * g_ClientScaling);
 		}
 
 		void ClientHeight(UINT h) {
-			g_ClientHeight = h;
+			g_ClientHeight = static_cast<UINT>(h * g_ClientScaling);
 		}
 
 		Entity* AddPolygon(POLYGON_TYPE);
@@ -50,11 +50,11 @@ namespace Application {
 		int g_CurrentBackbuffer = 0;
 		int g_CurrentMSAaLevel = 4;
 		int g_ConstantBuffers = 2; // one for per frame / one for per object
-		bool g_DebugEnabled = false;
+		bool g_DebugEnabled = true;
 		UINT64 g_CurrentFence = 0;
 		XMVECTORF32 g_BackBufferColor = DirectX::Colors::Black;
 		XMFLOAT4 g_MainCameraInitialPosition = DirectX::XMFLOAT4(0.0f, 4.0f, -15.0f, 1.0f);
-		static const bool g_UseGPU = true;
+		static const bool g_UseGPU = false;
 		static const bool g_RestrictToPrimaryOutput = false;
 			// Multisample is not supported in the swap chain, it need to be created on a separate render target
 		static const bool m_MsaaEnabled = false;
@@ -118,7 +118,8 @@ namespace Application {
 		UINT g_RtvDescriptorSize, g_DsvDescriptorSize, g_CbvSrvDescriptorSize;
 		UINT g_ClientWidth;
 		UINT g_ClientHeight;
-		
+		float g_ClientScaling;
+
 		// Main methods
 		void InitializeDebugging();
 		void InitializeDirect3D();

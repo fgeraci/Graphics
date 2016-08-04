@@ -10,7 +10,7 @@ namespace Application {
 	const static UINT		m_MinWidth  = 800;
 	const static UINT		m_MinHeight = 600;
 	const static int		m_GlobalFPS = 60;
-	const static float		m_GlobalSpeedModifier = 1.0f;				// Global speed adjuster
+	const static float		m_GlobalSpeedModifier = 0.6f;				// Global speed adjuster
 	const static float		m_GlobalModSpeedModifier = 1.5f;			// Speed on shift
 	const static float		m_RotationGlobalModifier = 1.0f;			// Rotation adjuster in degrees
 	const static float		m_FloatingPointErrorTolerance = 0.001f;		

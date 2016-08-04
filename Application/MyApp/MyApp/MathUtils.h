@@ -8,6 +8,14 @@ namespace Application {
 	
 	namespace Math {
 		
+		/* Misc */
+
+		float LinInt(float x, float x1, float x2, float y1, float y2);
+
+		float ToRadians(float);
+
+		float ToDegrees(float);
+
 		/* XM methods */
 
 		XMMATRIX GetRotationMatrixForAxis(XMVECTOR v);

@@ -83,6 +83,18 @@
     <Image Include="Assets\SplashScreen_RU.png">
       <Filter>Assets</Filter>
     </Image>
+    <Image Include="Assets\tmp_app_icon.scale-100.jpg">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="Assets\tmp_app_icon.scale-200.jpg">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="Assets\Square44x44Logo.scale-100.jpg">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="Assets\Square150x150Logo.scale-100.jpg">
+      <Filter>Assets</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="VertexShader.hlsl" />
