@@ -12,6 +12,20 @@ float oneDeg = Application::m_RotationGlobalModifier * (XM_PI / 180.0f);
 float cosOneDegPos = cos(oneDeg);
 float sinOneDegPos = sin(oneDeg);
 
+/* Misc */
+
+float Application::Math::LinInt(float x, float x1, float x2, float y1, float y2) {
+	return y1 + ((x - x1) * (y2 - y1)) / (x2 - x1);
+}
+
+float Application::Math::ToRadians(float angle) {
+	return angle * (XM_PI / 180.0f);
+}
+
+float Application::Math::ToDegrees(float d) {
+	return d * (180.0f / XM_PI);
+}
+
 /* XM methods */
 
 XMFLOAT3 Application::Math::AddVectors3(XMFLOAT3 v1, XMFLOAT3 v2) {

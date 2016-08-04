@@ -4,6 +4,7 @@ using namespace Windows::UI::Core;
 using namespace Application;
 using namespace DX;
 using namespace Application::Enums::Transformation;
+using namespace Windows::Graphics::Display;
 
 #pragma region Constructor
 
@@ -325,10 +326,13 @@ void Gfx::GetClientOutputProperties() {
 	adapter.Reset();
 	}
 
-	g_ClientWidth = g_PrimaryOutput.Width == 0 ?
-		static_cast<UINT>(CoreWindow::GetForCurrentThread()->Bounds.Width) : static_cast<UINT>(g_PrimaryOutput.Width);
-	g_ClientHeight = g_PrimaryOutput.Height == 0 ?
-		static_cast<UINT>(CoreWindow::GetForCurrentThread()->Bounds.Height) : static_cast<UINT>(g_PrimaryOutput.Height);
+	// Determine scaling
+	g_ClientScaling = static_cast<float>(DisplayInformation::GetForCurrentView()->ResolutionScale) / 100.0f;
+	g_ClientWidth = (UINT)(g_ClientScaling * (g_PrimaryOutput.Width == 0 ?
+		static_cast<UINT>(CoreWindow::GetForCurrentThread()->Bounds.Width) : static_cast<UINT>(g_PrimaryOutput.Width)));
+	g_ClientHeight = (UINT)(g_ClientScaling * (g_PrimaryOutput.Height == 0 ?
+		static_cast<UINT>(CoreWindow::GetForCurrentThread()->Bounds.Height) : static_cast<UINT>(g_PrimaryOutput.Height)));
+	
 }
 
 void Gfx::CheckAntialisngSupport() { 
@@ -604,6 +608,9 @@ Entity* Gfx::AddPolygon(POLYGON_TYPE type, bool dyn) {
 		break;
 	case CYLINDER:
 		p = new Cylinder(dyn);
+		break;
+	case ICOSAHEDRON:
+		p = new Icosahedron(dyn);
 		break;
 	}
 	// Create the Vertices buffer

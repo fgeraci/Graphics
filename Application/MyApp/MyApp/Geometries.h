@@ -9,11 +9,17 @@ namespace Application {
 	enum POLYGON_TYPE {
 		GRID = 0,
 		CUBE,
-		CYLINDER
+		CYLINDER,
+		ICOSAHEDRON,
+		SPHERE
 	};
 
 	class Polygon : public Entity {
 	
+	protected:
+
+		POLYGON_TYPE g_PolygonType;
+
 	public:
 		
 		Polygon() { g_Drawable = true; }
@@ -28,12 +34,6 @@ namespace Application {
 		static const UINT IndexSize = sizeof(uint16_t);
 		static const UINT StrideSize = sizeof(Vertex);
 		static const UINT DefaultGridSize = 70;
-
-	protected:
-
-		POLYGON_TYPE g_PolygonType;
-		
-	public:
 
 		POLYGON_TYPE PolygonType() {
 			return g_PolygonType;
@@ -72,6 +72,8 @@ namespace Application {
 		ComPtr<ID3D12Resource> GPUVertexBuffer() { return g_GPUVertexBuffer; }
 		ComPtr<ID3D12Resource> CPUIndexBuffer() { return g_CPUIndexBuffer; }
 		ComPtr<ID3D12Resource> GPUIndexBuffer() { return g_GPUIndexBuffer; }
+
+		virtual void Triangulate() { }
 
 	};
 
@@ -127,4 +129,31 @@ namespace Application {
 		Cylinder(int,float,float,int) { };
 
 	};
+
+	class Icosahedron sealed : public Polygon {
+	
+	private:
+
+		float g_SideSize = 2.0f;
+		float g_TriangleHeight;
+		std::vector<XMFLOAT4> g_Colors = {
+			XMFLOAT4(Colors::DarkRed),
+			XMFLOAT4(Colors::DarkGray),
+			XMFLOAT4(Colors::DarkBlue),
+			XMFLOAT4(Colors::DarkGreen)
+		};
+
+		void Triangulate() override;
+
+		int LayerForTriangles(int);
+		int VerticesForTriangles(int);
+
+
+	public:
+
+		Icosahedron();
+		Icosahedron(bool d) : Icosahedron() { g_Dynamic = d; }
+		Icosahedron(float s) { g_SideSize = s; }
+	};
+
 }
