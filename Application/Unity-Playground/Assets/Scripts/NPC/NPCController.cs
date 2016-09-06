@@ -29,16 +29,16 @@ public class NPCController : MonoBehaviour, IPerceivable {
 
     // Use this for initialization
     void Start () {
-	}
+        gBody = gameObject.GetComponent<NPCBody>();
+        gPerception = gameObject.GetComponent<NPCPerception>();
+    }
 	
     void FixedUpdate() {
-        gBody.UpdateBody();
+        // update IO here
     }
 
 	// Update is called once per frame
-	void Update () {
-	
-	}
+	void Update () { }
 
     // When script is added to GameObject or Reset
     void Reset() {
@@ -53,11 +53,11 @@ public class NPCController : MonoBehaviour, IPerceivable {
     #region Initialization
 
     private void InitializeNPCComponents() {
-        gBody = gameObject.AddComponent<NPCBody>();
-        gPerception = gameObject.AddComponent<NPCPerception>();
         gAI = new NPCAI(this);
+        gPerception = gameObject.AddComponent<NPCPerception>();
+        gBody = gameObject.AddComponent<NPCBody>();
         // hide flags
-            // gBody.hideFlags = HideFlags.HideInInspector;
+        // gBody.hideFlags = HideFlags.HideInInspector;
     }
 
     #endregion
