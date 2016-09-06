@@ -23,7 +23,7 @@ public class NPCController_Editor : Editor {
 
         EditorGUI.BeginChangeCheck();
         /* Perception Sliders */
-        gShowPerception = EditorGUILayout.Foldout(gShowPerception, "Perception");
+        gShowPerception = EditorGUILayout.Foldout(gShowPerception, "Perception") && gController.Perception != null;
         if(gShowPerception) {
             gController.Perception.ViewAngle = (float) EditorGUILayout.IntSlider(label_ViewAngle, (int) gController.Perception.ViewAngle, 
                 (int) NPCPerception.MIN_VIEW_ANGLE, 
@@ -38,7 +38,7 @@ public class NPCController_Editor : Editor {
             EditorUtility.SetDirty(gController);
         }
 
-        gShowBody = EditorGUILayout.Foldout(gShowBody, "Body");
+        gShowBody = EditorGUILayout.Foldout(gShowBody, "Body") && gController.Body != null;
         if(gShowBody) {
             gController.Body.Navigation = (bool)EditorGUILayout.Toggle(label_BodyNavigation, (bool)gController.Body.Navigation);
         }
@@ -48,14 +48,16 @@ public class NPCController_Editor : Editor {
 
     private void OnSceneGUI() {
         if(gController != null) {
-            Transform t = gController.Perception.PerceptionField.transform;
+            if(gShowPerception) {
+                Transform t = gController.Perception.PerceptionField.transform;
             
-            /* Draw View Angle */
-            float angleSplit = gController.Perception.ViewAngle / 2;
-            Debug.DrawRay(t.position,
-                Quaternion.AngleAxis(angleSplit, Vector3.up) * t.rotation * Vector3.forward * gController.Perception.PerceptionRadius, Color.red);
-            Debug.DrawRay(t.position, 
-                Quaternion.AngleAxis((-1) * angleSplit, Vector3.up) * t.rotation * Vector3.forward * gController.Perception.PerceptionRadius, Color.red);
+                /* Draw View Angle */
+                float angleSplit = gController.Perception.ViewAngle / 2;
+                Debug.DrawRay(t.position,
+                    Quaternion.AngleAxis(angleSplit, Vector3.up) * t.rotation * Vector3.forward * gController.Perception.PerceptionRadius, Color.red);
+                Debug.DrawRay(t.position, 
+                    Quaternion.AngleAxis((-1) * angleSplit, Vector3.up) * t.rotation * Vector3.forward * gController.Perception.PerceptionRadius, Color.red);
+            }
         }
     }
 
