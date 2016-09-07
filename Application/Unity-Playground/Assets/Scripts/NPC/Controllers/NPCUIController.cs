@@ -6,36 +6,49 @@ namespace NPC {
 
     public class NPCUIController : MonoBehaviour {
 
-        public Text CameraMode;
+        public Text gTxtLabel;
         public NPCCamController NPCCamera;
         public bool Debug = true;
 
         // Update is called once per frame
         public void UpdateUI() {
-            if (Debug) {
-                if(NPCCamera != null) {
-                    CameraInfo();
+            try {
+                if (Debug) {
+                    if (NPCCamera != null) {
+                        CameraInfo();
+                    }
+                }
+            } catch (System.Exception e) {
+                Text t = GetComponentInChildren<Text>();
+                if(t != null) {
+                    gTxtLabel = t;
+                } else {
+                    UnityEngine.Debug.Log("NPCUIController --> Failed at updating text field: " + e.Message + " - disabling component");
+                    this.enabled = false;
                 }
             }
+        }
+
+        public void SetText(Text t) {
+            gTxtLabel = t;
         }
 
         /// <summary>
         /// Displays Camera Data
         /// </summary>
         void CameraInfo() {
-            CameraMode.text = "Camera Mode: ";
+            gTxtLabel.text = "Camera Mode: ";
             switch (NPCCamera.CurrentMode) {
                 case NPCCamController.CAMERA_MODE.FIRST_PERSON:
-                    CameraMode.text += "First Person";
+                    gTxtLabel.text += "First Person";
                     break;
                 case NPCCamController.CAMERA_MODE.THIRD_PERSON:
-                    CameraMode.text += "Third Person";
+                    gTxtLabel.text += "Third Person";
                     break;
                 case NPCCamController.CAMERA_MODE.FREE:
-                    CameraMode.text += "Free Flight";
+                    gTxtLabel.text += "Free Flight";
                     break;
             }
         }
     }
-
 }

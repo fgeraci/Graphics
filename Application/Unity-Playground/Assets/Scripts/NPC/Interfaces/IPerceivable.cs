@@ -1,6 +1,10 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-public interface IPerceivable {
+namespace NPC {
+
+    public interface IPerceivable {
     
+    }
+
 }
