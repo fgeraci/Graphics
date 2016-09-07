@@ -12,24 +12,29 @@ using System.Reflection;
 /// 
 /// </summary>
 
-[AttributeUsage(AttributeTargets.Property | AttributeTargets.Method)]
-public sealed class NPCAttribute : System.Attribute, IComparable {
+namespace NPC {
+
+    [System.Serializable]
+    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Method)]
+    public sealed class NPCAttribute : System.Attribute, IComparable {
     
-    public Type Type { get; set; }
+        public Type Type { get; set; }
 
-    public string Name { get; set; }
+        public string Name { get; set; }
 
-    public NPCAttribute(string pName, Type pType) {
-        this.Name = pName;
-        this.Type = pType;
+        public NPCAttribute(string pName, Type pType) {
+            this.Name = pName;
+            this.Type = pType;
+        }
+
+        /// <summary>
+        /// Implement IComparable interface
+        /// </summary>
+        /// <param name="o"></param>
+        /// <returns></returns>
+        public int CompareTo(object o) {
+            return 0;
+        }
     }
 
-    /// <summary>
-    /// Implement IComparable interface
-    /// </summary>
-    /// <param name="o"></param>
-    /// <returns></returns>
-    public int CompareTo(object o) {
-        return 0;
-    }
 }

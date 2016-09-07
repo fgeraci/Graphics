@@ -13,9 +13,8 @@ namespace NPC {
         public float CameraRotationSpeed = 20f;
     
         Transform Camera = null;
-        private Transform Target = null;
-
-        Vector3 GlobalOffset;
+        private NPCController Target = null;
+        
         public CAMERA_MODE CurrentMode;
 
         public enum CAMERA_MODE {
@@ -23,13 +22,19 @@ namespace NPC {
             THIRD_PERSON,
             FIRST_PERSON
         }
-
+        
         public void SetCamera(Transform t) {
             Camera = t;
         }
 
-        public void SetTarget(Transform t) {
+        public void SetTarget(NPCController t) {
             Target = t;
+        }
+
+        void Start() {
+            if(Target != null) {
+                SetThirdPersonView();
+            }
         }
 
         public void UpdateCamera() {
@@ -38,28 +43,38 @@ namespace NPC {
                     HandleFreeCamera();
                     break;
                 case CAMERA_MODE.FIRST_PERSON:
+                    SetThirdPersonView();
+                    break;
                 case CAMERA_MODE.THIRD_PERSON:
-                    Camera.position = Target.position - GlobalOffset;
+                    if(!Target.Body.IsIdle)
+                        SetThirdPersonView();
                     break;
 
             }
         }
      
         public void UpdateCameraMode(CAMERA_MODE mode) {
-            CurrentMode = mode;
+            bool noTarget = false;
             switch (CurrentMode) {
                 case CAMERA_MODE.FREE:
-                    SetThirdPersonView();
+                    if (Target != null) SetThirdPersonView();
                     break;
                 case CAMERA_MODE.FIRST_PERSON:
-                    SetFirstpersonView();
+                    if (Target != null) SetFirstpersonView();
+                    else noTarget = true;
                     break;
                 case CAMERA_MODE.THIRD_PERSON:
-                    SetThirdPersonView();
-                    GlobalOffset = Target.position - Camera.position;
+                    if (Target != null) {
+                        SetThirdPersonView();
+                    }
+                    else noTarget = true;
                     break;
             }
-
+            if(noTarget) {
+                mode = CAMERA_MODE.FREE;
+                Debug.Log("NPCCamControlelr --> No target agent set, camera stays in FREE mode.");
+            }
+            CurrentMode = mode;
         }
 
         private void HandleCameraRotation() {
@@ -94,23 +109,19 @@ namespace NPC {
         }
 
         private void SetThirdPersonView() {
-            if (Target != null) {
-                Camera.position = Target.position;
-                Camera.rotation = Target.rotation;
-                Camera.position += Camera.up * 1.05f;
-                Camera.position += Camera.forward * -1.3f;
-                Camera.position += Camera.right * 0.3f;
-                Camera.RotateAround(Camera.position, Camera.right, 15f);
-                GlobalOffset = Target.position - Camera.position;
-            }
+            Camera.position = Target.transform.position;
+            Camera.rotation = Target.transform.rotation;
+            Camera.position += Camera.up * 0.8f;
+            Camera.position += Camera.forward * -0.6f;
+            Camera.position += Camera.right * 0.2f;
+            Camera.RotateAround(Camera.position, Camera.right, 15f);
         }
 
         private void SetFirstpersonView() {
-            Camera.position = Target.position;
-            Camera.rotation = Target.rotation;
-            Camera.position += Target.forward * 0.1f;
-            Camera.position += Target.up * 0.5f;
-            GlobalOffset = Target.position - Camera.position;
+            Camera.position = Target.transform.position;
+            Camera.rotation = Target.transform.rotation;
+            Camera.position += Target.transform.forward * 0.1f;
+            Camera.position += Target.transform.up * 0.5f;
         }
     }
 

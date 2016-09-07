@@ -11,10 +11,6 @@ namespace NPC {
 
         public void SetTarget(Transform target) {
             g_NPCController = target.gameObject.GetComponent<NPCController>();
-            if (g_NPCController == null) {
-                Debug.Log("NPCIO --> No NPCController found in target character for IO - disabling IO");
-                EnableIO = false;
-            } else EnableIO = true;
         }
     
         public enum INPUT_KEY {
@@ -22,7 +18,7 @@ namespace NPC {
             BACKWARD = KeyCode.S,
             LEFT = KeyCode.A,
             RIGHT = KeyCode.D,
-            CROUCH = KeyCode.LeftControl,
+            DUCK = KeyCode.LeftControl,
             JUMP = KeyCode.Space,
             RUN = KeyCode.LeftShift,
             INVENTORY = KeyCode.I,
@@ -35,14 +31,29 @@ namespace NPC {
 	
 	    // Update is called once per frame
 	    public void UpdateIO () {
-            if(EnableIO) {
-                foreach (INPUT_KEY key in Enum.GetValues(typeof(INPUT_KEY))) {
-                    if(Input.GetKeyDown((KeyCode)key)) {
-                        print(key + "is down");
-                    }
-                }
-            }
-	    }
+
+            // forward motion
+            if (Input.GetKey((KeyCode)INPUT_KEY.RUN)) {
+                g_NPCController.Body.Move(LOCO_STATE.RUN);
+            } else if (Input.GetKey((KeyCode)INPUT_KEY.DUCK)) {
+                g_NPCController.Body.Move(LOCO_STATE.DUCK);
+            } else g_NPCController.Body.Move(LOCO_STATE.WALK);
+
+            // forward motion
+            if (Input.GetKey((KeyCode)INPUT_KEY.FORWARD)) {
+                g_NPCController.Body.Move(LOCO_STATE.FORWARD);
+            } else if (Input.GetKey((KeyCode)INPUT_KEY.BACKWARD)) {
+                g_NPCController.Body.Move(LOCO_STATE.BACKWARDS);
+            } else g_NPCController.Body.Move(LOCO_STATE.IDLE);
+
+            // forward motion
+            if (Input.GetKey((KeyCode)INPUT_KEY.LEFT)) {
+                g_NPCController.Body.Move(LOCO_STATE.LEFT);
+            } else if (Input.GetKey((KeyCode)INPUT_KEY.RIGHT)) {
+                g_NPCController.Body.Move(LOCO_STATE.RIGHT);
+            } else g_NPCController.Body.Move(LOCO_STATE.FRONT);
+        }
+
     }
 
 }

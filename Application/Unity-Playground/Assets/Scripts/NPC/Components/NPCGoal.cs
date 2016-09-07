@@ -2,14 +2,16 @@
 using System.Collections;
 using System.Collections.Generic;
 
-namespace NPCModules {
+namespace NPC  {
 
+    [System.Serializable]
     public enum NPCGOAL_TYPE {
         BODY,
         TRAIT,
         STATE
     }
 
+    [System.Serializable]
     public enum NPCGOAL_STATUS {
         PENDING,
         SATISFIED,
@@ -17,6 +19,7 @@ namespace NPCModules {
         FAILED
     }
 
+    [System.Serializable]
     public class NPCGoal {
 
         private NPCGOAL_TYPE gType;
