@@ -32,7 +32,7 @@ namespace NPC {
 	    // Update is called once per frame
 	    public void UpdateIO () {
 
-            // forward motion
+            // modifiers
             if (Input.GetKey((KeyCode)INPUT_KEY.RUN)) {
                 g_NPCController.Body.Move(LOCO_STATE.RUN);
             } else if (Input.GetKey((KeyCode)INPUT_KEY.DUCK)) {
@@ -46,14 +46,18 @@ namespace NPC {
                 g_NPCController.Body.Move(LOCO_STATE.BACKWARDS);
             } else g_NPCController.Body.Move(LOCO_STATE.IDLE);
 
-            // forward motion
+            // turning
             if (Input.GetKey((KeyCode)INPUT_KEY.LEFT)) {
                 g_NPCController.Body.Move(LOCO_STATE.LEFT);
             } else if (Input.GetKey((KeyCode)INPUT_KEY.RIGHT)) {
                 g_NPCController.Body.Move(LOCO_STATE.RIGHT);
             } else g_NPCController.Body.Move(LOCO_STATE.FRONT);
-        }
 
+            // jumping
+            if (Input.GetKeyDown((KeyCode)INPUT_KEY.JUMP)) { // Note we only read jump once
+                g_NPCController.Body.Move(LOCO_STATE.JUMP);
+            }
+        }
     }
 
 }

@@ -43,7 +43,8 @@ namespace NPC {
                     HandleFreeCamera();
                     break;
                 case CAMERA_MODE.FIRST_PERSON:
-                    SetThirdPersonView();
+                    if (!Target.Body.IsIdle)
+                        SetFirstPersonView();
                     break;
                 case CAMERA_MODE.THIRD_PERSON:
                     if(!Target.Body.IsIdle)
@@ -55,26 +56,24 @@ namespace NPC {
      
         public void UpdateCameraMode(CAMERA_MODE mode) {
             bool noTarget = false;
+            CurrentMode = mode;
             switch (CurrentMode) {
                 case CAMERA_MODE.FREE:
                     if (Target != null) SetThirdPersonView();
                     break;
                 case CAMERA_MODE.FIRST_PERSON:
-                    if (Target != null) SetFirstpersonView();
+                    if (Target != null) SetFirstPersonView();
                     else noTarget = true;
                     break;
                 case CAMERA_MODE.THIRD_PERSON:
-                    if (Target != null) {
-                        SetThirdPersonView();
-                    }
+                    if (Target != null) SetThirdPersonView();
                     else noTarget = true;
                     break;
             }
             if(noTarget) {
-                mode = CAMERA_MODE.FREE;
+                CurrentMode = CAMERA_MODE.FREE;
                 Debug.Log("NPCCamControlelr --> No target agent set, camera stays in FREE mode.");
             }
-            CurrentMode = mode;
         }
 
         private void HandleCameraRotation() {
@@ -89,21 +88,17 @@ namespace NPC {
 
         private void HandleFreeCamera() {
             float speedModifier = Input.GetKey(KeyCode.LeftShift) ? Speed * 2f : Speed;
-
             HandleCameraRotation();
-
             if (Input.GetKey(KeyCode.W)) {
                 transform.position += transform.forward * (Time.deltaTime * speedModifier);
             } else if (Input.GetKey(KeyCode.S)) {
                 transform.position -= transform.forward * (Time.deltaTime * speedModifier);
             }
-
             if (Input.GetKey(KeyCode.A)) {
                 transform.position -= transform.right * (Time.deltaTime * speedModifier);
             } else if (Input.GetKey(KeyCode.D)) {
                 transform.position += transform.right * (Time.deltaTime * speedModifier);
             }
-
             gMouseX = Input.mousePosition.x;
             gMouseY = Input.mousePosition.y;
         }
@@ -117,11 +112,11 @@ namespace NPC {
             Camera.RotateAround(Camera.position, Camera.right, 15f);
         }
 
-        private void SetFirstpersonView() {
+        private void SetFirstPersonView() {
             Camera.position = Target.transform.position;
             Camera.rotation = Target.transform.rotation;
             Camera.position += Target.transform.forward * 0.1f;
-            Camera.position += Target.transform.up * 0.5f;
+            Camera.position += Target.transform.up * 0.45f;
         }
     }
 
