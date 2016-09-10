@@ -12,7 +12,9 @@ namespace NPC {
         RIGHT,
         RUN,
         WALK,
-        DUCK
+        DUCK,
+        GROUND,
+        JUMP
     }
 
     [System.Serializable]
@@ -34,6 +36,7 @@ namespace NPC {
         private static float MIN_RUN_SPEED      =  -1 * MAX_WALK__SPEED;
 
         private LOCO_STATE g_CurrentStateFwd    = LOCO_STATE.IDLE;
+        private LOCO_STATE g_CurrentStateGnd    = LOCO_STATE.GROUND;
         private LOCO_STATE g_CurrentStateDir    = LOCO_STATE.FRONT;
         private LOCO_STATE g_CurrentStateMod    = LOCO_STATE.WALK;
 
@@ -46,8 +49,11 @@ namespace NPC {
         public bool Navigation;
 
         public bool IsIdle {
-            get { return (g_CurrentStateFwd == LOCO_STATE.IDLE) 
-                    && (g_CurrentStateFwd == LOCO_STATE.FRONT);
+            get {
+                return (g_CurrentStateFwd == LOCO_STATE.IDLE) 
+                    && (g_CurrentStateDir == LOCO_STATE.FRONT
+                    && g_CurrentSpeed == 0.0f
+                    && g_CurrentOrientation == 0.0f);
             }
         }
         #endregion
@@ -135,6 +141,12 @@ namespace NPC {
                 }
             }
 
+            // update ground
+            if(g_CurrentStateGnd == LOCO_STATE.JUMP) {
+                g_Animator.SetTrigger(g_AnimParamJump);
+                g_CurrentStateGnd = LOCO_STATE.GROUND;
+            }
+
             // set animator
             g_Animator.SetFloat(g_AnimParamSpeed, g_CurrentSpeed);
             g_Animator.SetFloat(g_AnimParamDirection, g_CurrentOrientation);
@@ -158,6 +170,9 @@ namespace NPC {
                 case LOCO_STATE.LEFT:
                 case LOCO_STATE.FRONT:
                     g_CurrentStateDir = s;
+                    break;
+                case LOCO_STATE.JUMP:
+                    g_CurrentStateGnd = s;
                     break;
                 default:
                     Debug.Log("NPCBody --> Invalid direction especified for ModifyMotion");
