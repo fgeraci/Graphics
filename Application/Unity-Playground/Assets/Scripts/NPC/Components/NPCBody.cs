@@ -14,7 +14,8 @@ namespace NPC {
         WALK,
         DUCK,
         GROUND,
-        JUMP
+        JUMP,
+        FALL
     }
 
     [System.Serializable]
@@ -29,6 +30,7 @@ namespace NPC {
         private static string g_AnimParamDirection  = "Direction";
         private static string g_AnimParamJump       = "Jump";
 
+        private static float INITIAL_HEIHGT     = 0.0f;
         private static int SPEED_MOD            =  2;
         private static float MAX_WALK__SPEED    =  1.00f;
         private static float MAX_RUN_SPEED      =  1.00f * SPEED_MOD;
@@ -44,18 +46,24 @@ namespace NPC {
         private float g_CurrentSpeed            = 0.0f;
         private float g_CurrentVelocity         = 0.05f;
         private float g_CurrentOrientation      = 0.0f;
-        
+        private float g_CurrentHeight           = 0.0f;
+
         #region Properties
         public bool Navigation;
 
         public bool IsIdle {
             get {
-                return (g_CurrentStateFwd == LOCO_STATE.IDLE) 
-                    && (g_CurrentStateDir == LOCO_STATE.FRONT
-                    && g_CurrentSpeed == 0.0f
-                    && g_CurrentOrientation == 0.0f);
+                return
+                    // We always need to test for a state and a possible active transition
+                    g_Animator.GetCurrentAnimatorStateInfo(0).shortNameHash == gHashIdle 
+                    && g_Animator.GetAnimatorTransitionInfo(0).fullPathHash == 0.0f;
             }
         }
+        #endregion
+
+        #region StateHash
+        private static int gHashJump = Animator.StringToHash("Jump");
+        private static int gHashIdle = Animator.StringToHash("Idle");
         #endregion
 
         [System.ComponentModel.DefaultValue(1f)]
@@ -142,11 +150,14 @@ namespace NPC {
             }
 
             // update ground
-            if(g_CurrentStateGnd == LOCO_STATE.JUMP) {
+            if (g_CurrentStateGnd == LOCO_STATE.JUMP) {
                 g_Animator.SetTrigger(g_AnimParamJump);
+                g_CurrentStateGnd = LOCO_STATE.FALL;
+            } else if(g_Animator.GetAnimatorTransitionInfo(0).fullPathHash == 0) {
+                Debug.Log("Grounded");
                 g_CurrentStateGnd = LOCO_STATE.GROUND;
             }
-
+            
             // set animator
             g_Animator.SetFloat(g_AnimParamSpeed, g_CurrentSpeed);
             g_Animator.SetFloat(g_AnimParamDirection, g_CurrentOrientation);

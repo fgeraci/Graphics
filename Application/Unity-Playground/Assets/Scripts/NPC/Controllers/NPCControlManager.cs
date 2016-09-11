@@ -61,6 +61,8 @@ namespace NPC {
 	    // Use this for initialization
 	    void Awake () {
             try {
+                transform.position = Vector3.zero;
+                transform.rotation = Quaternion.identity;
                 FindMainNPC();
                 g_NPCCamera = Camera.main.GetComponent<NPCCamController>();
                 g_UI = GetComponentInChildren<NPCUIController>();
@@ -92,10 +94,12 @@ namespace NPC {
                     g_NPCCamera.UpdateCameraMode(NPCCamController.CAMERA_MODE.THIRD_PERSON);
                 } else if (Input.GetKey(KeyCode.F3)) {
                     g_NPCCamera.UpdateCameraMode(NPCCamController.CAMERA_MODE.FIRST_PERSON);
+                } else if (Input.GetKey(KeyCode.F4)) {
+                    g_NPCCamera.UpdateCameraMode(NPCCamController.CAMERA_MODE.ISOMETRIC);
                 }
             }
             if (EnableIOController 
-                && g_NPCCamera.CurrentMode != NPCCamController.CAMERA_MODE.FREE) {
+                && g_NPCCamera.Targetting) {
                 g_IO.UpdateIO();
             }
         }
