@@ -14,13 +14,23 @@ namespace NPC {
     
         Transform Camera = null;
         private NPCController Target = null;
+
+        public bool Targetting {
+            get {
+                return CurrentMode == CAMERA_MODE.THIRD_PERSON ||
+                    CurrentMode == CAMERA_MODE.FIRST_PERSON || 
+                    CurrentMode == CAMERA_MODE.ISOMETRIC_FOLLOW;
+            }
+        }
         
         public CAMERA_MODE CurrentMode;
 
         public enum CAMERA_MODE {
             FREE,
             THIRD_PERSON,
-            FIRST_PERSON
+            FIRST_PERSON,
+            ISOMETRIC,
+            ISOMETRIC_FOLLOW
         }
         
         public void SetCamera(Transform t) {
@@ -50,7 +60,9 @@ namespace NPC {
                     if(!Target.Body.IsIdle)
                         SetThirdPersonView();
                     break;
-
+                case CAMERA_MODE.ISOMETRIC:
+                    HandleIsometricCamera();
+                    break;
             }
         }
      
@@ -68,6 +80,9 @@ namespace NPC {
                 case CAMERA_MODE.THIRD_PERSON:
                     if (Target != null) SetThirdPersonView();
                     else noTarget = true;
+                    break;
+                case CAMERA_MODE.ISOMETRIC:
+                    SetIsometricView();
                     break;
             }
             if(noTarget) {
@@ -103,6 +118,27 @@ namespace NPC {
             gMouseY = Input.mousePosition.y;
         }
 
+        private void HandleIsometricCamera() {
+            float speedModifier = Input.GetKey(KeyCode.LeftShift) ? Speed * 2f : Speed;
+            if (Input.GetKey(KeyCode.W)) {
+                Camera.position += Vector3.right * (Time.deltaTime * speedModifier);
+            } else if (Input.GetKey(KeyCode.S)) {
+                Camera.position -= Vector3.right * (Time.deltaTime * speedModifier);
+            }
+            if (Input.GetKey(KeyCode.A)) {
+                Camera.position += Vector3.forward * (Time.deltaTime * speedModifier);
+            } else if (Input.GetKey(KeyCode.D)) {
+                Camera.position -= Vector3.forward * (Time.deltaTime * speedModifier);
+            }
+
+            Debug.Log(Input.GetAxis("Mouse ScrollWheel"));
+            if(Input.GetAxis("Mouse ScrollWheel") > 0.0f) {
+                Camera.position -= Vector3.up * (0.08f * speedModifier);
+            } else if (Input.GetAxis("Mouse ScrollWheel") < 0.0f) {
+                Camera.position += Vector3.up * (0.08f * speedModifier);
+            }
+        }
+
         private void SetThirdPersonView() {
             Camera.position = Target.transform.position;
             Camera.rotation = Target.transform.rotation;
@@ -117,6 +153,16 @@ namespace NPC {
             Camera.rotation = Target.transform.rotation;
             Camera.position += Target.transform.forward * 0.1f;
             Camera.position += Target.transform.up * 0.45f;
+        }
+
+        private void SetIsometricView() {
+            Vector3 curPos = Camera.position;
+            Camera.rotation = Quaternion.identity;
+            Camera.Rotate(Vector3.up, 90.0f);
+            Camera.Rotate(Vector3.right, 35.0f);
+            Debug.Log(Camera.position);
+            Camera.position = new Vector3(curPos.x, 2.0f, curPos.z);
+            Camera.position -= (Vector3.right * 0.5f);
         }
     }
 
